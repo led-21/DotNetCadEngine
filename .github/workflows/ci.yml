@@ -1,0 +1,85 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-test-windows:
+    name: Build & Test (Windows)
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Cache NuGet packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj') }}
+          restore-keys: |
+            ${{ runner.os }}-nuget-
+
+      - name: Restore dependencies
+        run: dotnet restore DotNetCadEngine.slnx
+
+      - name: Build solution (Release)
+        run: dotnet build DotNetCadEngine.slnx --configuration Release --no-restore
+
+      - name: Run all tests
+        run: dotnet test DotNetCadEngine.slnx --configuration Release --no-build --verbosity normal --logger "trx" --results-directory ./TestResults
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-windows
+          path: TestResults/*.trx
+
+  build-and-test-linux:
+    name: Core & Infrastructure (Linux)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Cache NuGet packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj') }}
+          restore-keys: |
+            ${{ runner.os }}-nuget-
+
+      - name: Restore Core & Infrastructure tests
+        run: dotnet restore tests/DotNetCad.Core.Tests/DotNetCad.Core.Tests.csproj
+
+      - name: Build Core & Infrastructure tests (Release)
+        run: dotnet build tests/DotNetCad.Core.Tests/DotNetCad.Core.Tests.csproj --configuration Release --no-restore
+
+      - name: Run Core & Infrastructure tests
+        run: dotnet test tests/DotNetCad.Core.Tests/DotNetCad.Core.Tests.csproj --configuration Release --no-build --verbosity normal --logger "trx" --results-directory ./TestResults
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-linux
+          path: TestResults/*.trx

@@ -1,5 +1,7 @@
 # DotNetCadEngine
 
+[![CI](https://github.com/led-21/DotNetCadEngine/actions/workflows/ci.yml/badge.svg)](https://github.com/led-21/DotNetCadEngine/actions/workflows/ci.yml)
+
 A 2D CAD geometry engine in C# with a Windows desktop playground. The project separates geometric calculations from the WPF interface and provides a small, dependency-free core for drawing, measurement, snapping, selection, and file interchange.
 
 ![DotNetCadEngine desktop demo showing a mechanical bracket drawing, drawing tools, snap controls, and layers](docs/images/cad-demo.jpg)
@@ -74,6 +76,12 @@ The DXF importer supports a focused subset of ASCII entities: `LINE`, `CIRCLE`, 
 SVG export writes vector shapes grouped by visible layer and converts CAD's upward Y axis to SVG coordinates.
 
 Some operations available in the core, including offsets, trimming, extension, fillets, transforms, and text-based coordinate entry, do not yet have dedicated controls in the desktop playground. The demo is intended to showcase the engine and its interaction model, rather than to replace a production CAD application.
+
+## CI
+
+O projeto é compilado e testado automaticamente via GitHub Actions a cada push ou pull request para a branch `main`:
+- O build completo e os testes da solução (incluindo a interface WPF) são validados no Windows (`windows-latest`).
+- O `DotNetCad.Core` e o `DotNetCad.Infrastructure` são validados de forma desacoplada no Linux (`ubuntu-latest`).
 
 ## License
 
