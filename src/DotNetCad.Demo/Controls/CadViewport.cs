@@ -38,6 +38,13 @@ public sealed class CadViewport : FrameworkElement
         typeof(CadViewport),
         new FrameworkPropertyMetadata(null));
 
+    public static readonly DependencyProperty ToggleOrthoCommandProperty = DependencyProperty.Register(
+        nameof(ToggleOrthoCommand), typeof(ICommand), typeof(CadViewport));
+    public static readonly DependencyProperty TogglePolarCommandProperty = DependencyProperty.Register(
+        nameof(TogglePolarCommand), typeof(ICommand), typeof(CadViewport));
+    public static readonly DependencyProperty ToggleOsnapCommandProperty = DependencyProperty.Register(
+        nameof(ToggleOsnapCommand), typeof(ICommand), typeof(CadViewport));
+
     public static readonly DependencyProperty MouseWorldXProperty = DependencyProperty.Register(
         nameof(MouseWorldX),
         typeof(double),
@@ -84,6 +91,24 @@ public sealed class CadViewport : FrameworkElement
     {
         get => (UndoRedoManager?)GetValue(UndoManagerProperty);
         set => SetValue(UndoManagerProperty, value);
+    }
+
+    public ICommand? ToggleOrthoCommand
+    {
+        get => (ICommand?)GetValue(ToggleOrthoCommandProperty);
+        set => SetValue(ToggleOrthoCommandProperty, value);
+    }
+
+    public ICommand? TogglePolarCommand
+    {
+        get => (ICommand?)GetValue(TogglePolarCommandProperty);
+        set => SetValue(TogglePolarCommandProperty, value);
+    }
+
+    public ICommand? ToggleOsnapCommand
+    {
+        get => (ICommand?)GetValue(ToggleOsnapCommandProperty);
+        set => SetValue(ToggleOsnapCommandProperty, value);
     }
 
     public double MouseWorldX
@@ -844,19 +869,19 @@ public sealed class CadViewport : FrameworkElement
 
         if (e.Key == Key.F8)
         {
-            Document.Preferences.IsOrthoModeEnabled = !Document.Preferences.IsOrthoModeEnabled;
+            ToggleOrthoCommand?.Execute(null);
             InvalidateVisual();
             e.Handled = true;
         }
         else if (e.Key == Key.F10)
         {
-            Document.Preferences.IsPolarTrackingEnabled = !Document.Preferences.IsPolarTrackingEnabled;
+            TogglePolarCommand?.Execute(null);
             InvalidateVisual();
             e.Handled = true;
         }
         else if (e.Key == Key.F3)
         {
-            Document.Preferences.IsOsnapEnabled = !Document.Preferences.IsOsnapEnabled;
+            ToggleOsnapCommand?.Execute(null);
             InvalidateVisual();
             e.Handled = true;
         }

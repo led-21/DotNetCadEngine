@@ -37,6 +37,9 @@ public sealed class MainViewModel : ObservableObject
             if (SetProperty(ref _document, value))
             {
                 RefreshLayers();
+                OnPropertyChanged(nameof(IsOrthoEnabled));
+                OnPropertyChanged(nameof(IsPolarEnabled));
+                OnPropertyChanged(nameof(IsOsnapEnabled));
             }
         }
     }

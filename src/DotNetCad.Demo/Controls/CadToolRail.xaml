@@ -24,8 +24,8 @@
         <Button Style="{StaticResource CadIconButtonStyle}" Tag="{StaticResource DimensionIcon}" ToolTip="Adicionar cota linear: escolha dois pontos e a posição" AutomationProperties.Name="Cota linear" Margin="2" Command="{Binding SetToolCommand}" CommandParameter="{x:Static editor:CadToolType.Dimension}" />
         <Separator Background="#334155" Margin="4,10" />
         <TextBlock Text="SNAPS" Foreground="#94A3B8" FontSize="10" FontWeight="Bold" Margin="4,0,4,6" HorizontalAlignment="Center" />
-        <Button Style="{StaticResource CadIconButtonStyle}" Tag="{StaticResource OrthoIcon}" ToolTip="Alternar desenho ortogonal (F8)" AutomationProperties.Name="Modo ortogonal" Margin="2" Command="{Binding ToggleOrthoCommand}" />
-        <Button Style="{StaticResource CadIconButtonStyle}" Tag="{StaticResource PolarIcon}" ToolTip="Alternar rastreamento polar (F10)" AutomationProperties.Name="Rastreamento polar" Margin="2" Command="{Binding TogglePolarCommand}" />
-        <Button Style="{StaticResource CadIconButtonStyle}" Tag="{StaticResource SnapIcon}" ToolTip="Alternar captura de objetos (F3)" AutomationProperties.Name="Captura de objetos" Margin="2" Command="{Binding ToggleOsnapCommand}" />
+        <ToggleButton Style="{StaticResource CadSnapToggleStyle}" Tag="{StaticResource OrthoIcon}" IsChecked="{Binding IsOrthoEnabled, Mode=OneWay}" ToolTip="Alternar desenho ortogonal (F8)" AutomationProperties.Name="Modo ortogonal" Margin="2" Command="{Binding ToggleOrthoCommand}" />
+        <ToggleButton Style="{StaticResource CadSnapToggleStyle}" Tag="{StaticResource PolarIcon}" IsChecked="{Binding IsPolarEnabled, Mode=OneWay}" ToolTip="Alternar rastreamento polar (F10)" AutomationProperties.Name="Rastreamento polar" Margin="2" Command="{Binding TogglePolarCommand}" />
+        <ToggleButton Style="{StaticResource CadSnapToggleStyle}" Tag="{StaticResource SnapIcon}" IsChecked="{Binding IsOsnapEnabled, Mode=OneWay}" ToolTip="Alternar captura de objetos (F3)" AutomationProperties.Name="Captura de objetos" Margin="2" Command="{Binding ToggleOsnapCommand}" />
     </StackPanel>
 </UserControl>

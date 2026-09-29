@@ -84,6 +84,38 @@
         </Setter>
     </Style>
 
+    <Style x:Key="CadSnapToggleStyle" TargetType="ToggleButton">
+        <Setter Property="Width" Value="38" />
+        <Setter Property="Height" Value="36" />
+        <Setter Property="Foreground" Value="{StaticResource TextLightBrush}" />
+        <Setter Property="Background" Value="#1E293B" />
+        <Setter Property="BorderBrush" Value="{StaticResource BorderDarkBrush}" />
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ToggleButton">
+                    <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="1" CornerRadius="4">
+                        <Viewbox Width="19" Height="19" Stretch="Uniform">
+                            <Path Data="{TemplateBinding Tag}" Stroke="{TemplateBinding Foreground}"
+                                  StrokeThickness="1.7" StrokeStartLineCap="Round" StrokeEndLineCap="Round"
+                                  StrokeLineJoin="Round" Stretch="Uniform" Width="24" Height="24" />
+                        </Viewbox>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True"><Setter Property="Background" Value="#334155" /></Trigger>
+                        <Trigger Property="IsChecked" Value="True">
+                            <Setter Property="Background" Value="#16465E" />
+                            <Setter Property="BorderBrush" Value="{StaticResource AccentCyanBrush}" />
+                            <Setter Property="Foreground" Value="{StaticResource AccentCyanBrush}" />
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False"><Setter Property="Opacity" Value="0.4" /></Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
     <Style x:Key="CadToolbarButtonStyle" TargetType="Button" BasedOn="{StaticResource CadButtonStyle}">
         <Setter Property="Template">
             <Setter.Value>
