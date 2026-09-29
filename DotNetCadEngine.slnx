@@ -1,0 +1,11 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/DotNetCad.Core/DotNetCad.Core.csproj" />
+    <Project Path="src/DotNetCad.Demo/DotNetCad.Demo.csproj" />
+    <Project Path="src/DotNetCad.Infrastructure/DotNetCad.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/DotNetCad.Core.Tests/DotNetCad.Core.Tests.csproj" />
+    <Project Path="tests/DotNetCad.Demo.Tests/DotNetCad.Demo.Tests.csproj" />
+  </Folder>
+</Solution>

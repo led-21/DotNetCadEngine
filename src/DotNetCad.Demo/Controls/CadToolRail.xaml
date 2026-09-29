@@ -1,0 +1,31 @@
+<UserControl x:Class="DotNetCad.Demo.Controls.CadToolRail"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:editor="clr-namespace:DotNetCad.Core.Editor;assembly=DotNetCad.Core"
+             Background="#1E293B">
+    <UserControl.Resources>
+        <Geometry x:Key="SelectIcon">M 4,3 L 4,18 L 9,14 L 12,21 L 15,19 L 12,13 L 18,13 Z</Geometry>
+        <Geometry x:Key="LineIcon">M 4,19 L 20,5 M 2,17 L 6,17 L 6,21 L 2,21 Z M 18,3 L 22,3 L 22,7 L 18,7 Z</Geometry>
+        <Geometry x:Key="PolylineIcon">M 3,18 L 9,6 L 15,15 L 21,5 M 1,16 L 5,16 L 5,20 L 1,20 Z M 7,4 L 11,4 L 11,8 L 7,8 Z M 13,13 L 17,13 L 17,17 L 13,17 Z M 19,3 L 23,3 L 23,7 L 19,7 Z</Geometry>
+        <Geometry x:Key="RectangleIcon">M 3,5 L 21,5 L 21,19 L 3,19 Z M 1,3 L 5,3 L 5,7 L 1,7 Z M 19,17 L 23,17 L 23,21 L 19,21 Z</Geometry>
+        <Geometry x:Key="CircleIcon">M 12,3 A 9,9 0 1 1 11.99,3 M 9,12 L 15,12 M 12,9 L 12,15</Geometry>
+        <Geometry x:Key="DimensionIcon">M 4,5 L 4,19 M 20,5 L 20,19 M 5,12 L 19,12 M 5,12 L 8,10 M 5,12 L 8,14 M 19,12 L 16,10 M 19,12 L 16,14</Geometry>
+        <Geometry x:Key="OrthoIcon">M 4,20 L 4,5 L 20,5 M 4,16 L 8,16 L 8,20</Geometry>
+        <Geometry x:Key="PolarIcon">M 3,20 L 21,20 M 3,20 L 17,6 M 8,20 A 5,5 0 0 0 6.5,16.5 M 17,4 L 19,6 L 17,8</Geometry>
+        <Geometry x:Key="SnapIcon">M 12,2 L 12,8 M 12,16 L 12,22 M 2,12 L 8,12 M 16,12 L 22,12 M 12,8 A 4,4 0 1 1 11.99,8</Geometry>
+    </UserControl.Resources>
+    <StackPanel Orientation="Vertical" Margin="4" HorizontalAlignment="Center">
+        <TextBlock Text="DRAW" Foreground="#94A3B8" FontSize="10" FontWeight="Bold" Margin="4,4,4,6" HorizontalAlignment="Center" />
+        <Button Style="{StaticResource CadIconButtonStyle}" Tag="{StaticResource SelectIcon}" ToolTip="Selecionar entidades (Esc)" AutomationProperties.Name="Selecionar" Margin="2" Command="{Binding SetToolCommand}" CommandParameter="{x:Static editor:CadToolType.Select}" />
+        <Button Style="{StaticResource CadIconButtonStyle}" Tag="{StaticResource LineIcon}" ToolTip="Desenhar linha: clique no início e no fim" AutomationProperties.Name="Linha" Margin="2" Command="{Binding SetToolCommand}" CommandParameter="{x:Static editor:CadToolType.Line}" />
+        <Button Style="{StaticResource CadIconButtonStyle}" Tag="{StaticResource PolylineIcon}" ToolTip="Desenhar polilinha: botão direito para concluir" AutomationProperties.Name="Polilinha" Margin="2" Command="{Binding SetToolCommand}" CommandParameter="{x:Static editor:CadToolType.Polyline}" />
+        <Button Style="{StaticResource CadIconButtonStyle}" Tag="{StaticResource RectangleIcon}" ToolTip="Desenhar retângulo: clique em dois cantos" AutomationProperties.Name="Retângulo" Margin="2" Command="{Binding SetToolCommand}" CommandParameter="{x:Static editor:CadToolType.Rectangle}" />
+        <Button Style="{StaticResource CadIconButtonStyle}" Tag="{StaticResource CircleIcon}" ToolTip="Desenhar círculo: clique no centro e no raio" AutomationProperties.Name="Círculo" Margin="2" Command="{Binding SetToolCommand}" CommandParameter="{x:Static editor:CadToolType.Circle}" />
+        <Button Style="{StaticResource CadIconButtonStyle}" Tag="{StaticResource DimensionIcon}" ToolTip="Adicionar cota linear: escolha dois pontos e a posição" AutomationProperties.Name="Cota linear" Margin="2" Command="{Binding SetToolCommand}" CommandParameter="{x:Static editor:CadToolType.Dimension}" />
+        <Separator Background="#334155" Margin="4,10" />
+        <TextBlock Text="SNAPS" Foreground="#94A3B8" FontSize="10" FontWeight="Bold" Margin="4,0,4,6" HorizontalAlignment="Center" />
+        <Button Style="{StaticResource CadIconButtonStyle}" Tag="{StaticResource OrthoIcon}" ToolTip="Alternar desenho ortogonal (F8)" AutomationProperties.Name="Modo ortogonal" Margin="2" Command="{Binding ToggleOrthoCommand}" />
+        <Button Style="{StaticResource CadIconButtonStyle}" Tag="{StaticResource PolarIcon}" ToolTip="Alternar rastreamento polar (F10)" AutomationProperties.Name="Rastreamento polar" Margin="2" Command="{Binding TogglePolarCommand}" />
+        <Button Style="{StaticResource CadIconButtonStyle}" Tag="{StaticResource SnapIcon}" ToolTip="Alternar captura de objetos (F3)" AutomationProperties.Name="Captura de objetos" Margin="2" Command="{Binding ToggleOsnapCommand}" />
+    </StackPanel>
+</UserControl>
