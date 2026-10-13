@@ -3,6 +3,7 @@
     <Project Path="src/DotNetCad.Core/DotNetCad.Core.csproj" />
     <Project Path="src/DotNetCad.Demo/DotNetCad.Demo.csproj" />
     <Project Path="src/DotNetCad.Infrastructure/DotNetCad.Infrastructure.csproj" />
+    <Project Path="src/DotNetCad.Mcp/DotNetCad.Mcp.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/DotNetCad.Core.Tests/DotNetCad.Core.Tests.csproj" />

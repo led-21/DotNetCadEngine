@@ -26,6 +26,10 @@ public sealed class CadViewport : FrameworkElement
         nameof(LayerRevision), typeof(int), typeof(CadViewport),
         new FrameworkPropertyMetadata(0, FrameworkPropertyMetadataOptions.AffectsRender, OnLayerRevisionChanged));
 
+    public static readonly DependencyProperty DrawingRevisionProperty = DependencyProperty.Register(
+        nameof(DrawingRevision), typeof(int), typeof(CadViewport),
+        new FrameworkPropertyMetadata(0, FrameworkPropertyMetadataOptions.AffectsRender, OnDrawingRevisionChanged));
+
     public static readonly DependencyProperty ActiveToolProperty = DependencyProperty.Register(
         nameof(ActiveTool),
         typeof(CadToolType),
@@ -79,6 +83,12 @@ public sealed class CadViewport : FrameworkElement
     {
         get => (int)GetValue(LayerRevisionProperty);
         set => SetValue(LayerRevisionProperty, value);
+    }
+
+    public int DrawingRevision
+    {
+        get => (int)GetValue(DrawingRevisionProperty);
+        set => SetValue(DrawingRevisionProperty, value);
     }
 
     public CadToolType ActiveTool
@@ -138,6 +148,7 @@ public sealed class CadViewport : FrameworkElement
     #endregion
 
     private readonly ViewportTransform _transform = new();
+    private bool _initialViewportCentered;
 
     // Pan state
     private bool _isPanning;
@@ -174,10 +185,8 @@ public sealed class CadViewport : FrameworkElement
         ClipToBounds = true;
         Cursor = Cursors.Cross;
 
-        // Default zoom centered
+        // The initial pan is set after layout, when the canvas size is known.
         _transform.Zoom = 25.0; // 25 px/meter
-        _transform.PanX = 400.0;
-        _transform.PanY = 300.0;
     }
 
     private static void OnDocumentChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
@@ -196,6 +205,13 @@ public sealed class CadViewport : FrameworkElement
         {
             if (vp.Document.GetLayer(entity.Layer)?.IsVisible == false) entity.IsSelected = false;
         }
+        vp.UpdateGrips();
+        vp.InvalidateVisual();
+    }
+
+    private static void OnDrawingRevisionChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        if (d is not CadViewport vp) return;
         vp.UpdateGrips();
         vp.InvalidateVisual();
     }
@@ -258,6 +274,13 @@ public sealed class CadViewport : FrameworkElement
     protected override void OnRender(DrawingContext dc)
     {
         base.OnRender(dc);
+
+        if (!_initialViewportCentered && ActualWidth > 0 && ActualHeight > 0)
+        {
+            _transform.PanX = ActualWidth / 2.0;
+            _transform.PanY = ActualHeight / 2.0;
+            _initialViewportCentered = true;
+        }
 
         var bounds = new Rect(0, 0, ActualWidth, ActualHeight);
         dc.DrawRectangle(new SolidColorBrush(Color.FromRgb(15, 23, 42)), null, bounds);

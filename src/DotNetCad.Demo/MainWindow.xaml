@@ -85,6 +85,26 @@
             </DockPanel>
         </Border>
 
+        <!-- Commands from the user and MCP share the open drawing. -->
+        <Border DockPanel.Dock="Bottom" Height="142" Background="#111C2E" BorderBrush="#334155" BorderThickness="0,1,0,0" Padding="10,6">
+            <DockPanel LastChildFill="True">
+                <TextBlock DockPanel.Dock="Top" Text="CAD / AI CONSOLE" Foreground="#38BDF8" FontSize="10" FontWeight="Bold" Margin="2,0,0,4" />
+                <DockPanel DockPanel.Dock="Bottom" Margin="0,5,0,0">
+                    <Button DockPanel.Dock="Right" Style="{StaticResource CadButtonStyle}" Content="Run" Command="{Binding ExecuteConsoleCommand}" ToolTip="Executar comando CAD" Margin="6,0,0,0" />
+                    <TextBox Text="{Binding ConsoleInput, UpdateSourceTrigger=PropertyChanged}" Background="#0F172A" Foreground="#F8FAFC"
+                             BorderBrush="#475569" BorderThickness="1" Padding="7,5" FontFamily="Consolas" FontSize="12"
+                             ToolTip="Digite HELP para ver os comandos. Enter executa o comando.">
+                        <TextBox.InputBindings>
+                            <KeyBinding Key="Return" Command="{Binding ExecuteConsoleCommand}" />
+                        </TextBox.InputBindings>
+                    </TextBox>
+                </DockPanel>
+                <ListBox x:Name="ConsoleOutput" ItemsSource="{Binding ConsoleHistory}" Background="#0F172A" Foreground="#CBD5E1"
+                         BorderBrush="#334155" BorderThickness="1" FontFamily="Consolas" FontSize="11" Padding="4"
+                         ScrollViewer.HorizontalScrollBarVisibility="Auto" />
+            </DockPanel>
+        </Border>
+
         <!-- Left Tool Rail -->
         <Border DockPanel.Dock="Left" Background="#1E293B" BorderBrush="#334155" BorderThickness="0,0,1,0" Width="64">
             <controls:CadToolRail />
@@ -116,6 +136,7 @@
         <controls:CadViewport x:Name="Viewport"
                               Document="{Binding Document}"
                               LayerRevision="{Binding LayerRevision}"
+                              DrawingRevision="{Binding DrawingRevision}"
                               ActiveTool="{Binding ActiveTool, Mode=TwoWay}"
                               UndoManager="{Binding UndoManager}"
                               ToggleOrthoCommand="{Binding ToggleOrthoCommand}"

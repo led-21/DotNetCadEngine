@@ -15,6 +15,7 @@ The screenshot shows the sample drawing loaded when the desktop app starts.
 - Toggle object snapping, orthogonal drawing, and polar tracking. Active modes remain highlighted in the toolbar.
 - Show or hide layers and choose the active layer for new geometry.
 - Undo and redo drawing operations; import a supported subset of ASCII DXF and export DXF or SVG.
+- Create geometry from the integrated CAD/AI console or through an MCP client connected to the open drawing.
 
 The app opens with a sample mechanical bracket so the interface can be explored immediately.
 
@@ -46,6 +47,40 @@ dotnet test DotNetCadEngine.slnx
 | Layers | Use a checkbox to show or hide a layer and the round selector to make a visible layer active. |
 | Undo / redo | Use the toolbar or `Ctrl+Z` / `Ctrl+Y` while the canvas has focus. |
 | Reset the example | Click **Sample** in the top toolbar. |
+| Use the console | Enter a command in the bottom panel and press Enter. AI/MCP actions appear in the same history. |
+
+## CAD console and MCP
+
+The bottom console accepts commands directly in the current drawing. Coordinates use `x;y` and spaces separate points. For example:
+
+```text
+LAYER AI
+LINE 0;0 80;0
+CIRCLE 40;20 12
+RECT 10;10 30;25
+POLYLINE 0;0 20;15 40;0
+LIST
+UNDO
+```
+
+Use `HELP` in the console for the full command list, including arcs, entity deletion, clearing the drawing, and redo. Console and MCP edits use the same document and undo history as the graphical tools.
+
+`DotNetCad.Mcp` is a local stdio MCP server for AI clients. Keep the WPF app running while using it: the server connects to the open app through a Windows named pipe and edits the drawing visible on screen. It exposes tools to inspect the drawing, add lines, circles, rectangles, arcs and polylines, select a layer, execute a console command, and export SVG or ASCII DXF. Export tools return file content to the client; they do not choose a destination or save a file automatically.
+
+After building the solution, configure a stdio-capable MCP client to launch the server. Replace the path with the absolute path on your machine:
+
+```json
+{
+  "mcpServers": {
+    "dotnetcad": {
+      "command": "dotnet",
+      "args": ["C:\\absolute\\path\\to\\DotNetCadEngine\\src\\DotNetCad.Mcp\\bin\\Debug\\net10.0\\DotNetCad.Mcp.dll"]
+    }
+  }
+}
+```
+
+Client configuration formats vary. The sample above is for clients that use an `mcpServers` object. Start one instance of the desktop app before calling the tools.
 
 ## Architecture
 
@@ -53,6 +88,7 @@ dotnet test DotNetCadEngine.slnx
 flowchart LR
     Demo[DotNetCad.Demo<br/>WPF interface] --> Core[DotNetCad.Core<br/>geometry and document model]
     Demo --> Infra[DotNetCad.Infrastructure<br/>DXF and SVG]
+    Mcp[DotNetCad.Mcp<br/>stdio tools] --> Demo
     Infra --> Core
     CoreTests[Core tests] --> Core
     CoreTests --> Infra
@@ -64,6 +100,7 @@ flowchart LR
 | `src/DotNetCad.Core` | Entities, geometry, validation, measurements, snapping, selection, document state, and undo/redo. It has no external NuGet packages or WPF references. |
 | `src/DotNetCad.Infrastructure` | ASCII DXF import/export and SVG export. |
 | `src/DotNetCad.Demo` | WPF canvas, mouse and keyboard interaction, layers panel, and file commands. |
+| `src/DotNetCad.Mcp` | Stdio MCP tools that inspect, edit, and export the drawing in the running desktop app. |
 | `tests/DotNetCad.Core.Tests` | Geometry, parsing, snapping, selection, history, and interchange checks. |
 | `tests/DotNetCad.Demo.Tests` | Viewport transformation checks. |
 
@@ -75,7 +112,7 @@ The DXF importer supports a focused subset of ASCII entities: `LINE`, `CIRCLE`, 
 
 SVG export writes vector shapes grouped by visible layer and converts CAD's upward Y axis to SVG coordinates.
 
-Some operations available in the core, including offsets, trimming, extension, fillets, transforms, and text-based coordinate entry, do not yet have dedicated controls in the desktop playground. The demo is intended to showcase the engine and its interaction model, rather than to replace a production CAD application.
+Some operations available in the core, including offsets, trimming, extension, fillets, and transforms, do not yet have dedicated controls in the desktop playground. The demo is intended to showcase the engine and its interaction model, rather than to replace a production CAD application.
 
 ## CI
 

@@ -22,6 +22,22 @@ public sealed class MainViewModel : ObservableObject
     private double _zoomLevel = 25.0;
     private int _selectedCount;
     private int _layerRevision;
+    private int _drawingRevision;
+    private string _consoleInput = string.Empty;
+
+    public int DrawingRevision
+    {
+        get => _drawingRevision;
+        private set => SetProperty(ref _drawingRevision, value);
+    }
+
+    public string ConsoleInput
+    {
+        get => _consoleInput;
+        set => SetProperty(ref _consoleInput, value);
+    }
+
+    public ObservableCollection<string> ConsoleHistory { get; } = ["CAD console ready. Type HELP for commands."];
 
     public int LayerRevision
     {
@@ -127,6 +143,7 @@ public sealed class MainViewModel : ObservableObject
     public ICommand ExportSvgCommand { get; }
     public ICommand ImportDxfCommand { get; }
     public ICommand LoadSampleDrawingCommand { get; }
+    public ICommand ExecuteConsoleCommand { get; }
 
     public MainViewModel()
     {
@@ -147,6 +164,12 @@ public sealed class MainViewModel : ObservableObject
         ExportSvgCommand = new RelayCommand(ExportSvg);
         ImportDxfCommand = new RelayCommand(ImportDxf);
         LoadSampleDrawingCommand = new RelayCommand(LoadSampleDrawing);
+        ExecuteConsoleCommand = new RelayCommand(() =>
+        {
+            var input = ConsoleInput;
+            ConsoleInput = string.Empty;
+            RunCadCommand(input);
+        });
 
         LoadSampleDrawing();
     }
@@ -179,6 +202,24 @@ public sealed class MainViewModel : ObservableObject
         if (layer == null || !layer.IsVisible) return;
         Document.ActiveLayer = layer.Name;
         foreach (var item in Layers) item.SetActive(item.Name.Equals(layer.Name, StringComparison.OrdinalIgnoreCase));
+    }
+
+    public CadCommandResult RunCadCommand(string input, bool fromMcp = false)
+    {
+        if (string.IsNullOrWhiteSpace(input)) return new CadCommandResult(false, "Enter a command.");
+        AppendConsole($"{(fromMcp ? "MCP" : "CAD")}> {input.Trim()}");
+        var result = CadCommandProcessor.Execute(Document, UndoManager, input);
+        AppendConsole($"{(result.Success ? "OK" : "ERROR")}: {result.Message}");
+        if (result.DrawingChanged) DrawingRevision++;
+        if (result.LayersChanged) RefreshLayers();
+        return result;
+    }
+
+    public void AppendConsole(string line)
+    {
+        foreach (var part in line.Split(["\r\n", "\n"], StringSplitOptions.None))
+            ConsoleHistory.Add(part);
+        while (ConsoleHistory.Count > 200) ConsoleHistory.RemoveAt(0);
     }
 
     private void LoadSampleDrawing()
