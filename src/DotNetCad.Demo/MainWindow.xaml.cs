@@ -13,6 +13,8 @@ public partial class MainWindow : Window
         InitializeComponent();
         if (DataContext is MainViewModel viewModel)
         {
+            viewModel.ZoomExtentsHandler = Viewport.ZoomExtents;
+            viewModel.ResetViewHandler = Viewport.ResetView;
             _mcpHost = new CadMcpPipeHost(viewModel, Dispatcher);
             Loaded += (_, _) => _mcpHost.Start();
             Closed += (_, _) => _mcpHost.Dispose();

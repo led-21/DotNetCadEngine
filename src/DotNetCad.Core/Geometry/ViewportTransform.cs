@@ -33,4 +33,20 @@ public sealed class ViewportTransform
         PanX = center.X - (worldCenter.X * Zoom);
         PanY = center.Y - (worldCenter.Y * Zoom);
     }
+
+    public bool FitBounds(BoundingBox2D bounds, double viewportWidth, double viewportHeight, double margin = 32.0)
+    {
+        if (bounds.IsEmpty || !double.IsFinite(bounds.MinX) || !double.IsFinite(bounds.MinY) ||
+            !double.IsFinite(bounds.MaxX) || !double.IsFinite(bounds.MaxY) ||
+            !double.IsFinite(viewportWidth) || !double.IsFinite(viewportHeight) ||
+            viewportWidth <= 0 || viewportHeight <= 0) return false;
+
+        var availableWidth = Math.Max(1.0, viewportWidth - 2 * margin);
+        var availableHeight = Math.Max(1.0, viewportHeight - 2 * margin);
+        Zoom = Math.Clamp(Math.Min(availableWidth / Math.Max(bounds.Width, 0.01),
+            availableHeight / Math.Max(bounds.Height, 0.01)), 0.01, 100.0);
+        PanX = viewportWidth / 2.0 - bounds.Center.X * Zoom;
+        PanY = viewportHeight / 2.0 - bounds.Center.Y * Zoom;
+        return true;
+    }
 }

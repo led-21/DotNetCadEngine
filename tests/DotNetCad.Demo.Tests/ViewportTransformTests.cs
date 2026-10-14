@@ -83,4 +83,21 @@ public class ViewportTransformTests
         Assert.Equal(wpfBefore.X + 50.0, wpfAfter.X, precision: 4);
         Assert.Equal(wpfBefore.Y + 30.0, wpfAfter.Y, precision: 4);
     }
+
+    [Fact]
+    public void FitBoundsCentersDrawingInsideViewportMargin()
+    {
+        var transform = new ViewportTransform();
+        Assert.True(transform.FitBounds(new BoundingBox2D(100, 200, 120, 210), 800, 600));
+
+        var lowerLeft = transform.WorldToScreen(new Point2D(100, 200));
+        var upperRight = transform.WorldToScreen(new Point2D(120, 210));
+        Assert.True(lowerLeft.X >= 32 - 1e-8);
+        Assert.True(upperRight.X <= 768 + 1e-8);
+        Assert.True(lowerLeft.Y >= 32 - 1e-8);
+        Assert.True(upperRight.Y <= 568 + 1e-8);
+        Assert.Equal(400, (lowerLeft.X + upperRight.X) / 2, 6);
+        Assert.Equal(300, (lowerLeft.Y + upperRight.Y) / 2, 6);
+        Assert.False(transform.FitBounds(BoundingBox2D.Empty, 800, 600));
+    }
 }

@@ -189,6 +189,27 @@ public sealed class CadViewport : FrameworkElement
         _transform.Zoom = 25.0; // 25 px/meter
     }
 
+    public bool ZoomExtents()
+    {
+        var bounds = BoundingBox2D.Empty;
+        foreach (var entity in VisibleEntities()) bounds = bounds.Expand(entity.BoundingBox);
+        if (!_transform.FitBounds(bounds, ActualWidth, ActualHeight)) return false;
+        _initialViewportCentered = true;
+        ZoomLevel = _transform.Zoom;
+        InvalidateVisual();
+        return true;
+    }
+
+    public void ResetView()
+    {
+        _transform.Zoom = 25.0;
+        _transform.PanX = ActualWidth / 2.0;
+        _transform.PanY = ActualHeight / 2.0;
+        _initialViewportCentered = ActualWidth > 0 && ActualHeight > 0;
+        ZoomLevel = _transform.Zoom;
+        InvalidateVisual();
+    }
+
     private static void OnDocumentChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
         if (d is CadViewport vp)
@@ -400,6 +421,17 @@ public sealed class CadViewport : FrameworkElement
                 var d2 = ToWpfPoint(d2World);
 
                 DrawDimensionGeometry(dc, pen, color, sp, ep, d1, d2, dim.FormattedText);
+            }
+            else if (entity is CadText label)
+            {
+                var anchor = ToWpfPoint(label.Position);
+                var formatted = new FormattedText(label.Text, CultureInfo.InvariantCulture,
+                    FlowDirection.LeftToRight, new Typeface("Segoe UI"),
+                    label.Height * _transform.Zoom, new SolidColorBrush(color),
+                    VisualTreeHelper.GetDpi(this).PixelsPerDip);
+                dc.PushTransform(new RotateTransform(-label.RotationDegrees, anchor.X, anchor.Y));
+                dc.DrawText(formatted, new Point(anchor.X, anchor.Y - formatted.Height));
+                dc.Pop();
             }
         }
     }

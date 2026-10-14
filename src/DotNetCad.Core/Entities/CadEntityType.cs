@@ -7,5 +7,6 @@ public enum CadEntityType
     Rectangle,
     Circle,
     Arc,
-    Dimension
+    Dimension,
+    Text
 }

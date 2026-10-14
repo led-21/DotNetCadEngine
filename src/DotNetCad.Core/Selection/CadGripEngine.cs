@@ -102,6 +102,11 @@ public static class CadGripEngine
             grips.Add(new GripHandle { EntityId = dim.Id, HandleIndex = 1, Type = GripType.Vertex, Position = dim.EndPoint, Label = "Dimension Target" });
             grips.Add(new GripHandle { EntityId = dim.Id, HandleIndex = 2, Type = GripType.DimensionOffset, Position = mid, Label = "Dimension Line" });
         }
+        else if (entity is CadText label)
+        {
+            grips.Add(new GripHandle { EntityId = label.Id, HandleIndex = 0, Type = GripType.Vertex,
+                Position = label.Position, Label = "Text insertion" });
+        }
 
         return grips;
     }
@@ -172,6 +177,10 @@ public static class CadGripEngine
             if (grip.HandleIndex == 0) dim.StartPoint = newPosition;
             else if (grip.HandleIndex == 1) dim.EndPoint = newPosition;
             else if (grip.HandleIndex == 2) dim.OffsetPoint = newPosition;
+        }
+        else if (entity is CadText label)
+        {
+            label.Position = newPosition;
         }
     }
 }

@@ -66,6 +66,11 @@ public static class DxfCadExporter
                 var mid = new Point2D((d1.X + d2.X) / 2.0, (d1.Y + d2.Y) / 2.0);
                 WriteText(sb, layer, mid.X, mid.Y + 0.2, 0.35, dim.FormattedText, inv);
             }
+            else if (entity is CadText label)
+            {
+                WriteText(sb, layer, label.Position.X, label.Position.Y, label.Height,
+                    label.Text, inv, label.RotationDegrees);
+            }
         }
 
         sb.AppendLine("0\nENDSEC\n0\nEOF");
@@ -108,9 +113,10 @@ public static class DxfCadExporter
         }
     }
 
-    private static void WriteText(StringBuilder sb, string layer, double x, double y, double height, string text, CultureInfo inv)
+    private static void WriteText(StringBuilder sb, string layer, double x, double y, double height,
+        string text, CultureInfo inv, double rotationDegrees = 0)
     {
-        sb.AppendLine($"0\nTEXT\n8\n{layer}\n10\n{x.ToString("F4", inv)}\n20\n{y.ToString("F4", inv)}\n30\n0.0\n40\n{height.ToString("F4", inv)}\n1\n{text}");
+        sb.AppendLine($"0\nTEXT\n8\n{layer}\n10\n{x.ToString("F4", inv)}\n20\n{y.ToString("F4", inv)}\n30\n0.0\n40\n{height.ToString("F4", inv)}\n50\n{rotationDegrees.ToString("F4", inv)}\n1\n{text}");
     }
 
     public static int ColorHexToAci(string? hex)

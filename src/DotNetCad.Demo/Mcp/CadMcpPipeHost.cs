@@ -3,6 +3,7 @@ using System.IO.Pipes;
 using System.Text;
 using System.Text.Json;
 using System.Windows.Threading;
+using DotNetCad.Core.Entities;
 using DotNetCad.Demo.ViewModels;
 using DotNetCad.Infrastructure.Dxf;
 using DotNetCad.Infrastructure.Mcp;
@@ -94,6 +95,17 @@ public sealed class CadMcpPipeHost : IDisposable
                         Type = e.EntityType.ToString(),
                         e.Layer,
                         e.ColorHex,
+                        StartPoint = (e as CadLine)?.StartPoint,
+                        EndPoint = (e as CadLine)?.EndPoint,
+                        Center = (e as CadCircle)?.Center,
+                        Radius = (e as CadCircle)?.Radius,
+                        Text = (e as CadText)?.Text,
+                        Position = (e as CadText)?.Position,
+                        Height = (e as CadText)?.Height,
+                        MeasureStart = (e as CadDimension)?.StartPoint,
+                        MeasureEnd = (e as CadDimension)?.EndPoint,
+                        DimensionOffset = (e as CadDimension)?.OffsetPoint,
+                        DimensionText = (e as CadDimension)?.FormattedText,
                         Bounds = e.BoundingBox
                     })
                 });

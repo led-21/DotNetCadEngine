@@ -74,6 +74,13 @@ public static class CadSelectionEngine
                 dim.OffsetPoint.DistanceTo(pt) <= toleranceMeters)
                 return entity;
         }
+        else if (entity is CadText label)
+        {
+            var box = label.BoundingBox;
+            var expanded = new BoundingBox2D(box.MinX - toleranceMeters, box.MinY - toleranceMeters,
+                box.MaxX + toleranceMeters, box.MaxY + toleranceMeters);
+            if (expanded.Contains(pt)) return entity;
+        }
 
         return null;
     }

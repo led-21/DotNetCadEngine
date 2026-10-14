@@ -54,4 +54,24 @@ public class DxfRoundTripTests
         Assert.True(importedPoly.IsClosed);
         Assert.Equal(4, importedPoly.Vertices.Count);
     }
+
+    [Fact]
+    public void DxfCad_TextRoundTripsWithPositionHeightAndRotation()
+    {
+        var document = new CadDocument();
+        document.AddEntity(new CadText
+        {
+            Position = new Point2D(2, 3), Height = 0.5,
+            RotationDegrees = 30, Text = "Quarto 1", Layer = "Annotations"
+        });
+
+        var imported = DxfCadImporter.ImportFromDxf(DxfCadExporter.ExportToDxf(document));
+
+        var label = Assert.Single(imported.Entities.OfType<CadText>());
+        Assert.Equal("Quarto 1", label.Text);
+        Assert.Equal(2, label.Position.X);
+        Assert.Equal(3, label.Position.Y);
+        Assert.Equal(0.5, label.Height);
+        Assert.Equal(30, label.RotationDegrees);
+    }
 }

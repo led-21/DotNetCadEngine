@@ -232,6 +232,31 @@ public static class DxfCadImporter
 
             return new CadPolyline(vertices, isClosed, layer, DxfCadExporter.AciToColorHex(colorAci));
         }
+        else if (entityType == "TEXT")
+        {
+            double x = 0, y = 0, height = 1, rotation = 0;
+            string text = string.Empty;
+            while (i < pairs.Count && pairs[i].Code != 0)
+            {
+                if (pairs[i].Code == 8) layer = pairs[i].Value;
+                if (pairs[i].Code == 62 && int.TryParse(pairs[i].Value, out int c)) colorAci = Math.Abs(c);
+                if (pairs[i].Code == 10) double.TryParse(pairs[i].Value, NumberStyles.Float, inv, out x);
+                if (pairs[i].Code == 20) double.TryParse(pairs[i].Value, NumberStyles.Float, inv, out y);
+                if (pairs[i].Code == 40) double.TryParse(pairs[i].Value, NumberStyles.Float, inv, out height);
+                if (pairs[i].Code == 50) double.TryParse(pairs[i].Value, NumberStyles.Float, inv, out rotation);
+                if (pairs[i].Code == 1) text = pairs[i].Value;
+                i++;
+            }
+
+            if (string.IsNullOrWhiteSpace(text) || !double.IsFinite(height) || height < 0.05 ||
+                !double.IsFinite(x) || !double.IsFinite(y) || !double.IsFinite(rotation)) return null;
+            return new CadText
+            {
+                Position = new Point2D(x, y), Text = text, Height = height,
+                RotationDegrees = rotation, Layer = layer,
+                ColorHex = DxfCadExporter.AciToColorHex(colorAci)
+            };
+        }
 
         return null;
     }

@@ -27,4 +27,19 @@ public class SvgExporterTests
         Assert.Contains("<circle", svg);
         Assert.Contains("</svg>", svg);
     }
+
+    [Fact]
+    public void ExportToSvg_EscapesTextLabels()
+    {
+        var document = new CadDocument();
+        document.AddEntity(new CadText
+        {
+            Position = new Point2D(1, 2), Height = 0.5, Text = "Sala & Cozinha"
+        });
+
+        var svg = SvgCadExporter.ExportToSvg(document);
+
+        Assert.Contains("Sala &amp; Cozinha", svg);
+        Assert.Contains("font-size=\"0.500\"", svg);
+    }
 }

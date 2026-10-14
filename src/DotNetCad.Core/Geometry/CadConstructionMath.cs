@@ -93,10 +93,15 @@ public static class CadConstructionMath
         var inter = FindSegmentIntersection(p1, p2, cutA, cutB);
         if (inter == null) return null;
 
-        var distToP1 = clickPoint.DistanceTo(p1);
-        var distToP2 = clickPoint.DistanceTo(p2);
+        var dx = p2.X - p1.X;
+        var dy = p2.Y - p1.Y;
+        var lengthSquared = dx * dx + dy * dy;
+        if (lengthSquared < 1e-12) return null;
+        var pickPosition = ((clickPoint.X - p1.X) * dx + (clickPoint.Y - p1.Y) * dy) / lengthSquared;
+        var intersectionPosition = ((inter.Value.X - p1.X) * dx + (inter.Value.Y - p1.Y) * dy) / lengthSquared;
+        if (Math.Abs(pickPosition - intersectionPosition) < 1e-8) return null;
 
-        return distToP1 < distToP2 ? (inter.Value, p2) : (p1, inter.Value);
+        return pickPosition < intersectionPosition ? (inter.Value, p2) : (p1, inter.Value);
     }
 
     public static (Point2D Center, Point2D TangentA, Point2D TangentB)? CreateFillet(Point2D a1, Point2D a2, Point2D b1, Point2D b2, double radius)

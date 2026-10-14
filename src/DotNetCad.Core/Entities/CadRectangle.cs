@@ -66,8 +66,9 @@ public sealed class CadRectangle : CadEntity
     {
         var vertices = GetVertices();
         var mirrored = CadTransformMath.MirrorPolygon(vertices, axisP1, axisP2);
+        // MirrorPolygon reverses the reflected vertex order to retain the
+        // counterclockwise winding required by positive width and height.
         Origin = mirrored[0];
-        // Mirroring flips winding and orientation
         var dx = mirrored[1].X - mirrored[0].X;
         var dy = mirrored[1].Y - mirrored[0].Y;
         RotationDegrees = Math.Atan2(dy, dx) * 180.0 / Math.PI;

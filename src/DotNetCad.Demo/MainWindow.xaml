@@ -12,6 +12,9 @@
         Background="#0F172A">
 
     <Window.Resources>
+        <Geometry x:Key="NewIcon">M 5,2 L 15,2 L 20,7 L 20,22 L 5,22 Z M 15,2 L 15,7 L 20,7</Geometry>
+        <Geometry x:Key="OpenIcon">M 3,8 L 3,5 L 10,5 L 12,8 L 21,8 L 19,20 L 3,20 L 5,11 L 22,11</Geometry>
+        <Geometry x:Key="SaveIcon">M 4,3 L 17,3 L 21,7 L 21,21 L 4,21 Z M 7,3 L 7,10 L 17,10 L 17,3 M 8,21 L 8,14 L 17,14 L 17,21</Geometry>
         <Geometry x:Key="ImportIcon">M 4,4 L 4,20 L 20,20 L 20,15 M 12,3 L 12,15 M 8,11 L 12,15 L 16,11</Geometry>
         <Geometry x:Key="ExportIcon">M 4,9 L 4,20 L 20,20 L 20,9 M 12,16 L 12,3 M 8,7 L 12,3 L 16,7</Geometry>
         <Geometry x:Key="SampleIcon">M 3,5 L 21,5 L 21,19 L 3,19 Z M 8,12 A 2,2 0 1 1 7.99,12 M 16,12 A 2,2 0 1 1 15.99,12 M 5,12 L 19,12</Geometry>
@@ -38,6 +41,10 @@
 
                 <!-- Actions -->
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                    <Button Style="{StaticResource CadToolbarButtonStyle}" Tag="{StaticResource NewIcon}" Content="New" ToolTip="Criar desenho vazio" Command="{Binding NewDrawingCommand}" Margin="4,0" />
+                    <Button Style="{StaticResource CadToolbarButtonStyle}" Tag="{StaticResource OpenIcon}" Content="Open" ToolTip="Abrir desenho CAD ou DXF" Command="{Binding OpenDrawingCommand}" Margin="4,0" />
+                    <Button Style="{StaticResource CadToolbarButtonStyle}" Tag="{StaticResource SaveIcon}" Content="Save" ToolTip="Salvar desenho CAD" Command="{Binding SaveDrawingCommand}" Margin="4,0" />
+                    <Separator Background="#334155" Margin="6,2" />
                     <Button Style="{StaticResource CadToolbarButtonStyle}" Tag="{StaticResource ImportIcon}" Content="Import DXF" ToolTip="Importar desenho DXF" Command="{Binding ImportDxfCommand}" Margin="4,0" />
                     <Button Style="{StaticResource CadToolbarButtonStyle}" Tag="{StaticResource ExportIcon}" Content="Export DXF" ToolTip="Exportar desenho para DXF" Command="{Binding ExportDxfCommand}" Margin="4,0" />
                     <Button Style="{StaticResource CadToolbarButtonStyle}" Tag="{StaticResource ExportIcon}" Content="Export SVG" ToolTip="Exportar desenho para SVG" Command="{Binding ExportSvgCommand}" Margin="4,0" />

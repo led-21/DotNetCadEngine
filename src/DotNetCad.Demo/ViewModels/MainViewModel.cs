@@ -8,6 +8,7 @@ using DotNetCad.Core.Geometry;
 using DotNetCad.Core.History;
 using DotNetCad.Demo.Mvvm;
 using DotNetCad.Infrastructure.Dxf;
+using DotNetCad.Infrastructure.Native;
 using DotNetCad.Infrastructure.Svg;
 using Microsoft.Win32;
 
@@ -24,6 +25,12 @@ public sealed class MainViewModel : ObservableObject
     private int _layerRevision;
     private int _drawingRevision;
     private string _consoleInput = string.Empty;
+    private string? _nativePath;
+    private bool _hasUnsavedChanges;
+    private bool _suppressDirtyTracking;
+
+    public Func<bool>? ZoomExtentsHandler { get; set; }
+    public Action? ResetViewHandler { get; set; }
 
     public int DrawingRevision
     {
@@ -100,6 +107,7 @@ public sealed class MainViewModel : ObservableObject
             if (Document.Preferences.IsOrthoModeEnabled != value)
             {
                 Document.Preferences.IsOrthoModeEnabled = value;
+                _hasUnsavedChanges = true;
                 OnPropertyChanged();
             }
         }
@@ -113,6 +121,7 @@ public sealed class MainViewModel : ObservableObject
             if (Document.Preferences.IsPolarTrackingEnabled != value)
             {
                 Document.Preferences.IsPolarTrackingEnabled = value;
+                _hasUnsavedChanges = true;
                 OnPropertyChanged();
             }
         }
@@ -126,6 +135,7 @@ public sealed class MainViewModel : ObservableObject
             if (Document.Preferences.IsOsnapEnabled != value)
             {
                 Document.Preferences.IsOsnapEnabled = value;
+                _hasUnsavedChanges = true;
                 OnPropertyChanged();
             }
         }
@@ -142,11 +152,19 @@ public sealed class MainViewModel : ObservableObject
     public ICommand ExportDxfCommand { get; }
     public ICommand ExportSvgCommand { get; }
     public ICommand ImportDxfCommand { get; }
+    public ICommand SaveDrawingCommand { get; }
+    public ICommand OpenDrawingCommand { get; }
+    public ICommand NewDrawingCommand { get; }
     public ICommand LoadSampleDrawingCommand { get; }
     public ICommand ExecuteConsoleCommand { get; }
 
     public MainViewModel()
     {
+        UndoManager.PropertyChanged += (_, args) =>
+        {
+            if (!_suppressDirtyTracking && args.PropertyName == nameof(UndoRedoManager.UndoCount))
+                _hasUnsavedChanges = true;
+        };
         SetToolCommand = new RelayCommand(p =>
         {
             if (p is CadToolType tool) ActiveTool = tool;
@@ -163,6 +181,9 @@ public sealed class MainViewModel : ObservableObject
         ExportDxfCommand = new RelayCommand(ExportDxf);
         ExportSvgCommand = new RelayCommand(ExportSvg);
         ImportDxfCommand = new RelayCommand(ImportDxf);
+        SaveDrawingCommand = new RelayCommand(SaveDrawingFromToolbar);
+        OpenDrawingCommand = new RelayCommand(OpenDrawingFromToolbar);
+        NewDrawingCommand = new RelayCommand(NewDrawingFromToolbar);
         LoadSampleDrawingCommand = new RelayCommand(LoadSampleDrawing);
         ExecuteConsoleCommand = new RelayCommand(() =>
         {
@@ -188,6 +209,7 @@ public sealed class MainViewModel : ObservableObject
 
     private void OnLayerVisibilityChanged()
     {
+        _hasUnsavedChanges = true;
         if (Document.GetLayer(Document.ActiveLayer)?.IsVisible == false)
         {
             var next = Document.Layers.FirstOrDefault(layer => layer.IsVisible);
@@ -200,6 +222,7 @@ public sealed class MainViewModel : ObservableObject
     {
         var layer = Document.GetLayer(name);
         if (layer == null || !layer.IsVisible) return;
+        if (!Document.ActiveLayer.Equals(layer.Name, StringComparison.OrdinalIgnoreCase)) _hasUnsavedChanges = true;
         Document.ActiveLayer = layer.Name;
         foreach (var item in Layers) item.SetActive(item.Name.Equals(layer.Name, StringComparison.OrdinalIgnoreCase));
     }
@@ -208,11 +231,127 @@ public sealed class MainViewModel : ObservableObject
     {
         if (string.IsNullOrWhiteSpace(input)) return new CadCommandResult(false, "Enter a command.");
         AppendConsole($"{(fromMcp ? "MCP" : "CAD")}> {input.Trim()}");
-        var result = CadCommandProcessor.Execute(Document, UndoManager, input);
+        var trimmed = input.Trim();
+        var result = RunApplicationCommand(trimmed) ?? CadCommandProcessor.Execute(Document, UndoManager, trimmed);
         AppendConsole($"{(result.Success ? "OK" : "ERROR")}: {result.Message}");
         if (result.DrawingChanged) DrawingRevision++;
-        if (result.LayersChanged) RefreshLayers();
+        if (result.LayersChanged)
+        {
+            RefreshLayers();
+            _hasUnsavedChanges = true;
+        }
         return result;
+    }
+
+    private CadCommandResult? RunApplicationCommand(string input)
+    {
+        if (input.Equals("HELP", StringComparison.OrdinalIgnoreCase))
+            return new(true, CadCommandProcessor.Help + " | ZOOM EXTENTS | SAVE [path.cad] | OPEN [DISCARD] path.cad|path.dxf | NEW [DISCARD]");
+        if (input.Equals("ZOOM EXTENTS", StringComparison.OrdinalIgnoreCase))
+            return ZoomExtentsHandler?.Invoke() == true
+                ? new(true, "Visible drawing fitted to the viewport.")
+                : new(false, "No visible entities or viewport size available to fit.");
+        if (input.Equals("NEW", StringComparison.OrdinalIgnoreCase) ||
+            input.Equals("NEW DISCARD", StringComparison.OrdinalIgnoreCase))
+        {
+            if (_hasUnsavedChanges && !input.EndsWith("DISCARD", StringComparison.OrdinalIgnoreCase))
+                return new(false, "Unsaved changes. Use SAVE first, or NEW DISCARD to replace this drawing.");
+            ReplaceDocument(new CadDocument(), null, false);
+            ResetViewHandler?.Invoke();
+            return new(true, "New empty drawing.", DrawingChanged: true);
+        }
+        if (input.Equals("SAVE", StringComparison.OrdinalIgnoreCase) ||
+            input.StartsWith("SAVE ", StringComparison.OrdinalIgnoreCase))
+            return SaveNativeDrawing(ParsePath(input[4..]) ?? _nativePath);
+        if (input.StartsWith("OPEN ", StringComparison.OrdinalIgnoreCase))
+        {
+            var argument = input[5..].Trim();
+            var discard = argument.StartsWith("DISCARD ", StringComparison.OrdinalIgnoreCase);
+            if (discard) argument = argument[8..].Trim();
+            if (_hasUnsavedChanges && !discard)
+                return new(false, "Unsaved changes. Use SAVE first, or OPEN DISCARD path to replace this drawing.");
+            return OpenDrawing(ParsePath(argument));
+        }
+        return null;
+    }
+
+    private static string? ParsePath(string argument)
+    {
+        var path = argument.Trim();
+        if (path.Length >= 2 && path[0] == '"' && path[^1] == '"') path = path[1..^1];
+        return string.IsNullOrWhiteSpace(path) ? null : path;
+    }
+
+    private CadCommandResult SaveNativeDrawing(string? path)
+    {
+        if (path == null) return new(false, "Use SAVE path.cad for a new drawing.");
+        string? temporaryPath = null;
+        var oldTitle = Document.Title;
+        try
+        {
+            var fullPath = Path.GetFullPath(path);
+            if (!Path.GetExtension(fullPath).Equals(".cad", StringComparison.OrdinalIgnoreCase))
+                return new(false, "Native drawings must use the .cad extension.");
+            Document.Title = Path.GetFileName(fullPath);
+            var content = CadDrawingSerializer.Serialize(Document);
+            temporaryPath = fullPath + "." + Guid.NewGuid().ToString("N") + ".tmp";
+            File.WriteAllText(temporaryPath, content);
+            File.Move(temporaryPath, fullPath, overwrite: true);
+            _nativePath = fullPath;
+            _hasUnsavedChanges = false;
+            return new(true, $"Saved drawing to {fullPath}.");
+        }
+        catch (Exception ex) when (ex is IOException or InvalidDataException or UnauthorizedAccessException or ArgumentException or NotSupportedException or System.Text.Json.JsonException)
+        {
+            Document.Title = oldTitle;
+            return new(false, $"Could not save drawing: {ex.Message}");
+        }
+        finally
+        {
+            if (temporaryPath != null)
+            {
+                try { if (File.Exists(temporaryPath)) File.Delete(temporaryPath); }
+                catch (IOException) { }
+                catch (UnauthorizedAccessException) { }
+            }
+        }
+    }
+
+    private CadCommandResult OpenDrawing(string? path)
+    {
+        if (path == null) return new(false, "Use OPEN path.cad or OPEN path.dxf.");
+        try
+        {
+            var fullPath = Path.GetFullPath(path);
+            var extension = Path.GetExtension(fullPath).ToLowerInvariant();
+            if (extension is not (".cad" or ".dxf"))
+                return new(false, "OPEN supports .cad and .dxf files.");
+            var content = File.ReadAllText(fullPath);
+            var opened = extension == ".cad"
+                ? CadDrawingSerializer.Deserialize(content)
+                : DxfCadImporter.ImportFromDxf(content, Path.GetFileName(fullPath));
+            opened.Title = Path.GetFileName(fullPath);
+            ReplaceDocument(opened, extension == ".cad" ? fullPath : null, extension == ".dxf");
+            ZoomExtentsHandler?.Invoke();
+            return new(true, $"Opened {opened.Entities.Count} entities from {fullPath}.", DrawingChanged: true);
+        }
+        catch (Exception ex) when (ex is IOException or InvalidDataException or UnauthorizedAccessException or ArgumentException or NotSupportedException or System.Text.Json.JsonException)
+        {
+            return new(false, $"Could not open drawing: {ex.Message}");
+        }
+    }
+
+    private void ReplaceDocument(CadDocument document, string? nativePath, bool hasUnsavedChanges)
+    {
+        _suppressDirtyTracking = true;
+        try
+        {
+            Document = document;
+            UndoManager.Clear();
+            _nativePath = nativePath;
+            _hasUnsavedChanges = hasUnsavedChanges;
+        }
+        finally { _suppressDirtyTracking = false; }
     }
 
     public void AppendConsole(string line)
@@ -242,8 +381,57 @@ public sealed class MainViewModel : ObservableObject
             Prefix = "L = "
         });
 
-        Document = doc;
-        UndoManager.Clear();
+        ReplaceDocument(doc, null, false);
+    }
+
+    private void SaveDrawingFromToolbar()
+    {
+        if (_nativePath != null)
+        {
+            ShowCommandError(RunCadCommand("SAVE"));
+            return;
+        }
+
+        var dialog = new SaveFileDialog
+        {
+            Filter = "DotNetCad Drawing (*.cad)|*.cad",
+            DefaultExt = ".cad",
+            AddExtension = true,
+            FileName = Path.GetExtension(Document.Title).Equals(".cad", StringComparison.OrdinalIgnoreCase)
+                ? Document.Title : "Drawing.cad"
+        };
+        if (dialog.ShowDialog() == true)
+            ShowCommandError(RunCadCommand($"SAVE \"{dialog.FileName}\""));
+    }
+
+    private void OpenDrawingFromToolbar()
+    {
+        var dialog = new OpenFileDialog
+        {
+            Filter = "CAD Drawings (*.cad;*.dxf)|*.cad;*.dxf|DotNetCad Drawing (*.cad)|*.cad|AutoCAD DXF (*.dxf)|*.dxf",
+            DefaultExt = ".cad",
+            CheckFileExists = true
+        };
+        if (dialog.ShowDialog() != true) return;
+        if (!ConfirmDiscardUnsaved()) return;
+        var discard = _hasUnsavedChanges ? "DISCARD " : string.Empty;
+        ShowCommandError(RunCadCommand($"OPEN {discard}\"{dialog.FileName}\""));
+    }
+
+    private void NewDrawingFromToolbar()
+    {
+        if (!ConfirmDiscardUnsaved()) return;
+        ShowCommandError(RunCadCommand(_hasUnsavedChanges ? "NEW DISCARD" : "NEW"));
+    }
+
+    private bool ConfirmDiscardUnsaved() => !_hasUnsavedChanges ||
+        MessageBox.Show("O desenho atual tem alterações não salvas. Deseja descartá-las?",
+            "Alterações não salvas", MessageBoxButton.YesNo, MessageBoxImage.Warning) == MessageBoxResult.Yes;
+
+    private static void ShowCommandError(CadCommandResult result)
+    {
+        if (!result.Success)
+            MessageBox.Show(result.Message, "DotNetCad", MessageBoxButton.OK, MessageBoxImage.Error);
     }
 
     private void ExportDxf()
@@ -294,6 +482,8 @@ public sealed class MainViewModel : ObservableObject
             var imported = DxfCadImporter.ImportFromDxf(content, Path.GetFileName(dialog.FileName));
             Document = imported;
             UndoManager.Clear();
+            _nativePath = null;
+            _hasUnsavedChanges = true;
             MessageBox.Show($"Successfully loaded {imported.Entities.Count} entities from DXF.", "DXF Import", MessageBoxButton.OK, MessageBoxImage.Information);
         }
     }

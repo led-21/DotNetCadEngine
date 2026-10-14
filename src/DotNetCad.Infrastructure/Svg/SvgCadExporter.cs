@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Security;
 using System.Text;
 using DotNetCad.Core.Editor;
 using DotNetCad.Core.Entities;
@@ -47,7 +48,7 @@ public static class SvgCadExporter
             var isVisible = layer?.IsVisible ?? true;
             if (!isVisible) continue;
 
-            sb.AppendLine($"  <g id=\"Layer_{layerName}\" stroke-linecap=\"round\" stroke-linejoin=\"round\">");
+            sb.AppendLine($"  <g id=\"Layer_{SecurityElement.Escape(layerName)}\" stroke-linecap=\"round\" stroke-linejoin=\"round\">");
 
             foreach (var entity in group)
             {
@@ -118,7 +119,15 @@ public static class SvgCadExporter
                     var mid = new Point2D((d1.X + d2.X) / 2.0, (d1.Y + d2.Y) / 2.0);
                     var tx = ToSvgX(mid.X).ToString("F3", inv);
                     var ty = (ToSvgY(mid.Y) - 0.2).ToString("F3", inv);
-                    sb.AppendLine($"    <text x=\"{tx}\" y=\"{ty}\" fill=\"{stroke}\" font-size=\"0.4\" text-anchor=\"middle\" font-family=\"monospace\">{dim.FormattedText}</text>");
+                    sb.AppendLine($"    <text x=\"{tx}\" y=\"{ty}\" fill=\"{stroke}\" font-size=\"0.4\" text-anchor=\"middle\" font-family=\"monospace\">{SecurityElement.Escape(dim.FormattedText)}</text>");
+                }
+                else if (entity is CadText label)
+                {
+                    var x = ToSvgX(label.Position.X).ToString("F3", inv);
+                    var y = ToSvgY(label.Position.Y).ToString("F3", inv);
+                    var size = label.Height.ToString("F3", inv);
+                    var angle = (-label.RotationDegrees).ToString("F3", inv);
+                    sb.AppendLine($"    <text x=\"{x}\" y=\"{y}\" fill=\"{stroke}\" font-size=\"{size}\" font-family=\"sans-serif\" transform=\"rotate({angle} {x} {y})\">{SecurityElement.Escape(label.Text)}</text>");
                 }
             }
 

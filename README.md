@@ -14,7 +14,7 @@ The screenshot shows the sample drawing loaded when the desktop app starts.
 - Pan, zoom, select entities, edit grips, and use window or crossing selection.
 - Toggle object snapping, orthogonal drawing, and polar tracking. Active modes remain highlighted in the toolbar.
 - Show or hide layers and choose the active layer for new geometry.
-- Undo and redo drawing operations; import a supported subset of ASCII DXF and export DXF or SVG.
+- Undo and redo drawing operations; save and reopen native `.cad` drawings, import a supported subset of ASCII DXF, and export DXF or SVG.
 - Create geometry from the integrated CAD/AI console or through an MCP client connected to the open drawing.
 
 The app opens with a sample mechanical bracket so the interface can be explored immediately.
@@ -45,6 +45,7 @@ dotnet test DotNetCadEngine.slnx
 | Pan and zoom | Drag with the middle mouse button; use the mouse wheel to zoom. |
 | Precision modes | Use the highlighted controls on the left, or press `F3` (object snap), `F8` (ortho), and `F10` (polar) while the canvas has focus. |
 | Layers | Use a checkbox to show or hide a layer and the round selector to make a visible layer active. |
+| New / Open / Save | Use the top toolbar to start a drawing, open `.cad` or `.dxf`, and save a native `.cad` file. The app asks before discarding unsaved changes. |
 | Undo / redo | Use the toolbar or `Ctrl+Z` / `Ctrl+Y` while the canvas has focus. |
 | Reset the example | Click **Sample** in the top toolbar. |
 | Use the console | Enter a command in the bottom panel and press Enter. AI/MCP actions appear in the same history. |
@@ -59,13 +60,48 @@ LINE 0;0 80;0
 CIRCLE 40;20 12
 RECT 10;10 30;25
 POLYLINE 0;0 20;15 40;0
+TEXT 2;2 0.5 Quarto 1
+DIM 0;0 5;0 2.5;-0.5
 LIST
 UNDO
 ```
 
-Use `HELP` in the console for the full command list, including arcs, entity deletion, clearing the drawing, and redo. Console and MCP edits use the same document and undo history as the graphical tools.
+Use `HELP` in the console for the full command list, including arcs, entity deletion, clearing the drawing, and redo. `TEXT x;y height words...` adds a single-line label on the active layer; `DIM startX;startY endX;endY offsetX;offsetY` adds an aligned measurement. Heights and coordinates are in drawing units, and dimensions display meters. Console and MCP edits use the same document and undo history as the graphical tools.
 
-`DotNetCad.Mcp` is a local stdio MCP server for AI clients. Keep the WPF app running while using it: the server connects to the open app through a Windows named pipe and edits the drawing visible on screen. It exposes tools to inspect the drawing, add lines, circles, rectangles, arcs and polylines, select a layer, execute a console command, and export SVG or ASCII DXF. Export tools return file content to the client; they do not choose a destination or save a file automatically.
+To edit an existing line, run `LIST` to obtain its ID (or call `describe_drawing` through MCP for IDs and line endpoints). The following commands operate on line entities and each edit can be undone in one step:
+
+```text
+BREAK lineId 4;0 6;0
+TRIM lineId boundaryLineId 9;0
+EXTEND lineId boundaryLineId END
+OFFSET lineId 0.2 LEFT
+```
+
+`BREAK` removes the portion between two points on the line; `TRIM` removes the side nearest the pick point; `EXTEND` moves the chosen `START` or `END` to a boundary segment. These commands replace the edited line, so use the new ID returned by the command for subsequent edits. `OFFSET` adds a parallel line without changing the original. It also accepts a circle ID and a signed distance to create a concentric circle. All coordinates and distances use drawing units.
+
+Use the ID of any entity with these transformation commands:
+
+```text
+MOVE entityId 2;1
+COPY entityId 4;0
+ROTATE entityId 0;0 90
+MIRROR entityId 0;0 0;10
+```
+
+`MOVE` and `COPY` use an `x;y` displacement. `ROTATE` takes a center and an angle in degrees (positive is counterclockwise); `MIRROR` takes two points defining the reflection axis. Move, rotate, and mirror retain the original ID. Copy creates an independent entity with a new ID while preserving its layer and style. Each command is one undoable operation.
+
+To frame the visible drawing and keep it between sessions, use:
+
+```text
+ZOOM EXTENTS
+SAVE "C:\Drawings\House.cad"
+OPEN "C:\Drawings\House.cad"
+NEW
+```
+
+`SAVE` writes the native `.cad` format, preserving entity IDs, geometry, layers and preferences. Once a native file is open or saved, `SAVE` can omit the path. `OPEN` also reads `.dxf` files; use `SAVE path.cad` afterward to keep an editable native copy. `NEW` starts an empty drawing. When the current drawing has unsaved changes, `OPEN` and `NEW` return an error; save first or explicitly use `OPEN DISCARD path` / `NEW DISCARD`. Paths containing spaces may be quoted. These commands are available through MCP as `zoom_extents`, `save_drawing`, `open_drawing` and `new_drawing`; the latter two require `discardUnsaved: true` to replace unsaved work.
+
+`DotNetCad.Mcp` is a local stdio MCP server for AI clients. Keep the WPF app running while using it: the server connects to the open app through a Windows named pipe and edits the drawing visible on screen. It exposes tools to inspect the drawing, add lines, circles, rectangles, arcs, polylines, text labels and aligned dimensions, break/trim/extend lines, offset lines and circles, move/copy/rotate/mirror entities, select a layer, frame, save, open or start a drawing, execute a console command, and export SVG or ASCII DXF. Export tools return file content to the client; they do not choose a destination or save a file automatically.
 
 After building the solution, configure a stdio-capable MCP client to launch the server. Replace the path with the absolute path on your machine:
 
@@ -108,7 +144,7 @@ The core includes line, polyline, rectangle, circle, arc, and dimension entities
 
 ## File formats and current scope
 
-The DXF importer supports a focused subset of ASCII entities: `LINE`, `CIRCLE`, `ARC`, and `LWPOLYLINE`, plus layer information. The exporter writes those shapes and represents rectangles as polylines and dimensions as basic line/text entities. Colors map to a small AutoCAD Color Index palette, and coordinates are rounded during export. This is a practical interchange example, not a full DXF implementation or a guarantee of lossless round trips with arbitrary CAD files.
+The DXF importer supports a focused subset of ASCII entities: `LINE`, `CIRCLE`, `ARC`, `LWPOLYLINE`, and single-line `TEXT`, plus layer information. The exporter writes those shapes and represents rectangles as polylines and dimensions as basic line/text entities. Colors map to a small AutoCAD Color Index palette, and coordinates are rounded during export. This is a practical interchange example, not a full DXF implementation or a guarantee of lossless round trips with arbitrary CAD files.
 
 SVG export writes vector shapes grouped by visible layer and converts CAD's upward Y axis to SVG coordinates.
 
