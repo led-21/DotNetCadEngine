@@ -90,6 +90,18 @@ MIRROR entityId 0;0 0;10
 
 `MOVE` and `COPY` use an `x;y` displacement. `ROTATE` takes a center and an angle in degrees (positive is counterclockwise); `MIRROR` takes two points defining the reflection axis. Move, rotate, and mirror retain the original ID. Copy creates an independent entity with a new ID while preserving its layer and style. Each command is one undoable operation.
 
+Layers and entities can be inspected and organized from the console or MCP:
+
+```text
+LAYER SHOW PAREDES
+LAYER HIDE PORTAS
+LAYER COLOR PAREDES #38BDF8
+PROPERTIES entityId
+PROPERTIES LAYER PAREDES
+```
+
+Hiding the active layer selects another visible layer; the last visible active layer cannot be hidden. Changing a layer color also recolors existing entities that still use its previous color, while preserving custom entity colors. Visibility and color changes can be undone. `PROPERTIES` reports exact geometry, style and bounds without editing the drawing. The MCP tools are `show_layer`, `hide_layer`, `set_layer_color`, `get_entity_properties` and `get_layer_properties`.
+
 To frame the visible drawing and keep it between sessions, use:
 
 ```text
@@ -101,7 +113,7 @@ NEW
 
 `SAVE` writes the native `.cad` format, preserving entity IDs, geometry, layers and preferences. Once a native file is open or saved, `SAVE` can omit the path. `OPEN` also reads `.dxf` files; use `SAVE path.cad` afterward to keep an editable native copy. `NEW` starts an empty drawing. When the current drawing has unsaved changes, `OPEN` and `NEW` return an error; save first or explicitly use `OPEN DISCARD path` / `NEW DISCARD`. Paths containing spaces may be quoted. These commands are available through MCP as `zoom_extents`, `save_drawing`, `open_drawing` and `new_drawing`; the latter two require `discardUnsaved: true` to replace unsaved work.
 
-`DotNetCad.Mcp` is a local stdio MCP server for AI clients. Keep the WPF app running while using it: the server connects to the open app through a Windows named pipe and edits the drawing visible on screen. It exposes tools to inspect the drawing, add lines, circles, rectangles, arcs, polylines, text labels and aligned dimensions, break/trim/extend lines, offset lines and circles, move/copy/rotate/mirror entities, select a layer, frame, save, open or start a drawing, execute a console command, and export SVG or ASCII DXF. Export tools return file content to the client; they do not choose a destination or save a file automatically.
+`DotNetCad.Mcp` is a local stdio MCP server for AI clients. Keep the WPF app running while using it: the server connects to the open app through a Windows named pipe and edits the drawing visible on screen. It exposes tools to inspect entities and layers, add lines, circles, rectangles, arcs, polylines, text labels and aligned dimensions, break/trim/extend lines, offset lines and circles, move/copy/rotate/mirror entities, control layer visibility and color, frame, save, open or start a drawing, execute a console command, and export SVG or ASCII DXF. Export tools return file content to the client; they do not choose a destination or save a file automatically.
 
 After building the solution, configure a stdio-capable MCP client to launch the server. Replace the path with the absolute path on your machine:
 

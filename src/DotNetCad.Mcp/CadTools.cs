@@ -41,6 +41,22 @@ public sealed class CadTools(CadMcpBridgeClient bridge)
     [McpServerTool, Description("Select an existing visible layer or create a new layer for subsequent CAD entities. Names cannot contain spaces.")]
     public async Task<string> SetLayer(string name) => await Command($"LAYER {name}");
 
+    [McpServerTool, Description("Show an existing drawing layer. The change can be undone.")]
+    public async Task<string> ShowLayer(string name) => await Command($"LAYER SHOW {name}");
+
+    [McpServerTool, Description("Hide an existing drawing layer. If it is active, another visible layer becomes active. The change can be undone.")]
+    public async Task<string> HideLayer(string name) => await Command($"LAYER HIDE {name}");
+
+    [McpServerTool, Description("Set a layer color using #RRGGBB. Existing entities using the previous layer color are recolored; custom entity colors are preserved. The change can be undone.")]
+    public async Task<string> SetLayerColor(string name, string colorHex) =>
+        await Command($"LAYER COLOR {name} {colorHex}");
+
+    [McpServerTool, Description("Read precise geometry, layer, color and style properties for one entity ID from describe_drawing.")]
+    public async Task<string> GetEntityProperties(string entityId) => await Command($"PROPERTIES {entityId}");
+
+    [McpServerTool, Description("Read visibility, color, active status and entity count for an existing layer.")]
+    public async Task<string> GetLayerProperties(string name) => await Command($"PROPERTIES LAYER {name}");
+
     [McpServerTool, Description("Remove the part of a line between two points on it. The original line is replaced by up to two lines; use describe_drawing to get its ID and endpoints.")]
     public async Task<string> BreakLine(string lineId, double x1, double y1, double x2, double y2) =>
         await Command($"BREAK {lineId} {Point(x1, y1)} {Point(x2, y2)}");

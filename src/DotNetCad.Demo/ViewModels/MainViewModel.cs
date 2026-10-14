@@ -171,8 +171,8 @@ public sealed class MainViewModel : ObservableObject
             else if (p is string toolStr && Enum.TryParse<CadToolType>(toolStr, true, out var parsedTool)) ActiveTool = parsedTool;
         });
 
-        UndoCommand = new RelayCommand(() => UndoManager.Undo(), () => UndoManager.CanUndo);
-        RedoCommand = new RelayCommand(() => UndoManager.Redo(), () => UndoManager.CanRedo);
+        UndoCommand = new RelayCommand(() => ApplyHistoryChange(undo: true), () => UndoManager.CanUndo);
+        RedoCommand = new RelayCommand(() => ApplyHistoryChange(undo: false), () => UndoManager.CanRedo);
 
         ToggleOrthoCommand = new RelayCommand(() => IsOrthoEnabled = !IsOrthoEnabled);
         TogglePolarCommand = new RelayCommand(() => IsPolarEnabled = !IsPolarEnabled);
@@ -205,6 +205,14 @@ public sealed class MainViewModel : ObservableObject
             Layers.Add(item);
         }
         LayerRevision++;
+    }
+
+    private void ApplyHistoryChange(bool undo)
+    {
+        if (undo) UndoManager.Undo();
+        else UndoManager.Redo();
+        DrawingRevision++;
+        RefreshLayers();
     }
 
     private void OnLayerVisibilityChanged()

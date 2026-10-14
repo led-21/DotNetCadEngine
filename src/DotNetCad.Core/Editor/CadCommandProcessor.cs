@@ -11,7 +11,7 @@ public sealed record CadCommandResult(bool Success, string Message, bool Drawing
 /// <summary>Executes one CAD command against the same document and history used by the viewport.</summary>
 public static class CadCommandProcessor
 {
-    public const string Help = "HELP | LINE x1;y1 x2;y2 | CIRCLE x;y radius | RECT x1;y1 x2;y2 | ARC x;y radius start end | POLYLINE x1;y1 x2;y2 [...] | TEXT x;y height words... | DIM x1;y1 x2;y2 offsetX;offsetY | LAYER name | LIST | BREAK lineId x1;y1 x2;y2 | TRIM lineId boundaryId pickX;pickY | EXTEND lineId boundaryId START|END | OFFSET id distance [LEFT|RIGHT] | MOVE id dx;dy | COPY id dx;dy | ROTATE id centerX;centerY angleDegrees | MIRROR id axisX1;axisY1 axisX2;axisY2 | DELETE id | CLEAR | UNDO | REDO";
+    public const string Help = "HELP | LINE x1;y1 x2;y2 | CIRCLE x;y radius | RECT x1;y1 x2;y2 | ARC x;y radius start end | POLYLINE x1;y1 x2;y2 [...] | TEXT x;y height words... | DIM x1;y1 x2;y2 offsetX;offsetY | LAYER name | LAYER SHOW|HIDE name | LAYER COLOR name #RRGGBB | PROPERTIES id | PROPERTIES LAYER name | LIST | BREAK lineId x1;y1 x2;y2 | TRIM lineId boundaryId pickX;pickY | EXTEND lineId boundaryId START|END | OFFSET id distance [LEFT|RIGHT] | MOVE id dx;dy | COPY id dx;dy | ROTATE id centerX;centerY angleDegrees | MIRROR id axisX1;axisY1 axisX2;axisY2 | DELETE id | CLEAR | UNDO | REDO";
 
     public static CadCommandResult Execute(CadDocument document, UndoRedoManager history, string input)
     {
@@ -120,6 +120,48 @@ public static class CadCommandProcessor
                     if (!layer.IsVisible) return new(false, "Make the layer visible before activating it.");
                     document.ActiveLayer = layer.Name;
                     return new(true, $"Active layer: {layer.Name}", LayersChanged: true);
+                }
+                case "LAYER" when parts.Length == 3 &&
+                    (parts[1].Equals("SHOW", StringComparison.OrdinalIgnoreCase) ||
+                     parts[1].Equals("HIDE", StringComparison.OrdinalIgnoreCase)):
+                {
+                    var layer = document.GetLayer(parts[2]);
+                    if (layer == null) return new(false, "Layer not found.");
+                    var show = parts[1].Equals("SHOW", StringComparison.OrdinalIgnoreCase);
+                    if (layer.IsVisible == show)
+                        return new(true, $"Layer {layer.Name} is already {(show ? "visible" : "hidden")}.");
+                    var nextActive = document.ActiveLayer;
+                    if (!show && document.ActiveLayer.Equals(layer.Name, StringComparison.OrdinalIgnoreCase))
+                    {
+                        nextActive = document.Layers.FirstOrDefault(item => item != layer && item.IsVisible)?.Name ?? string.Empty;
+                        if (nextActive.Length == 0) return new(false, "At least one visible layer must remain active.");
+                    }
+                    history.ExecuteAction(new SetLayerVisibilityAction(document, layer, show, nextActive));
+                    return new(true, $"Layer {layer.Name} is now {(show ? "visible" : "hidden")}. Active layer: {document.ActiveLayer}.",
+                        DrawingChanged: true, LayersChanged: true);
+                }
+                case "LAYER" when parts.Length == 4 && parts[1].Equals("COLOR", StringComparison.OrdinalIgnoreCase):
+                {
+                    var layer = document.GetLayer(parts[2]);
+                    if (layer == null) return new(false, "Layer not found.");
+                    var color = parts[3];
+                    if (color.Length != 7 || color[0] != '#' || !color.Skip(1).All(Uri.IsHexDigit))
+                        return new(false, "Use a color in #RRGGBB form.");
+                    color = color.ToUpperInvariant();
+                    if (layer.ColorHex.Equals(color, StringComparison.OrdinalIgnoreCase))
+                        return new(true, $"Layer {layer.Name} already uses {color}.");
+                    history.ExecuteAction(new SetLayerColorAction(document, layer, color));
+                    return new(true, $"Layer {layer.Name} color changed to {color}.", DrawingChanged: true, LayersChanged: true);
+                }
+                case "PROPERTIES" when parts.Length == 2:
+                {
+                    if (!TryEntity(document, parts[1], out var entity, out var error)) return new(false, error);
+                    return new(true, DescribeEntity(entity!));
+                }
+                case "PROPERTIES" when parts.Length == 3 && parts[1].Equals("LAYER", StringComparison.OrdinalIgnoreCase):
+                {
+                    var layer = document.GetLayer(parts[2]);
+                    return layer == null ? new(false, "Layer not found.") : new(true, DescribeLayer(document, layer));
                 }
                 case "LIST" when parts.Length == 1:
                 {
@@ -278,11 +320,11 @@ public static class CadCommandProcessor
                 case "UNDO" when parts.Length == 1:
                     if (!history.CanUndo) return new(false, "Nothing to undo.");
                     history.Undo();
-                    return new(true, "Undone.", DrawingChanged: true);
+                    return new(true, "Undone.", DrawingChanged: true, LayersChanged: true);
                 case "REDO" when parts.Length == 1:
                     if (!history.CanRedo) return new(false, "Nothing to redo.");
                     history.Redo();
-                    return new(true, "Redone.", DrawingChanged: true);
+                    return new(true, "Redone.", DrawingChanged: true, LayersChanged: true);
                 default:
                     return new(false, $"Unknown command or argument count. {Help}");
             }
@@ -339,6 +381,74 @@ public static class CadCommandProcessor
         return !bounds.IsEmpty && double.IsFinite(bounds.MinX) && double.IsFinite(bounds.MinY) &&
             double.IsFinite(bounds.MaxX) && double.IsFinite(bounds.MaxY);
     }
+
+    private static string DescribeEntity(ICadEntity entity)
+    {
+        var bounds = entity.BoundingBox;
+        var fields = new List<string>
+        {
+            $"ID: {entity.Id}", $"Type: {entity.EntityType}", $"Layer: {entity.Layer}",
+            $"Color: {entity.ColorHex}", $"Line thickness: {Format(entity.LineThickness)}",
+            $"Bounds: {FormatPoint(new(bounds.MinX, bounds.MinY))} to {FormatPoint(new(bounds.MaxX, bounds.MaxY))}"
+        };
+        switch (entity)
+        {
+            case CadLine line:
+                fields.Add($"Start: {FormatPoint(line.StartPoint)}");
+                fields.Add($"End: {FormatPoint(line.EndPoint)}");
+                fields.Add($"Length: {Format(line.Length)}");
+                break;
+            case CadCircle circle:
+                fields.Add($"Center: {FormatPoint(circle.Center)}");
+                fields.Add($"Radius: {Format(circle.Radius)}");
+                fields.Add($"Diameter: {Format(circle.Diameter)}");
+                break;
+            case CadArc arc:
+                fields.Add($"Center: {FormatPoint(arc.Center)}");
+                fields.Add($"Radius: {Format(arc.Radius)}");
+                fields.Add($"Start angle: {Format(arc.StartAngleDegrees)} degrees");
+                fields.Add($"End angle: {Format(arc.EndAngleDegrees)} degrees");
+                fields.Add($"Arc length: {Format(arc.ArcLength)}");
+                break;
+            case CadRectangle rectangle:
+                fields.Add($"Origin: {FormatPoint(rectangle.Origin)}");
+                fields.Add($"Width: {Format(rectangle.Width)}");
+                fields.Add($"Height: {Format(rectangle.Height)}");
+                fields.Add($"Rotation: {Format(rectangle.RotationDegrees)} degrees");
+                break;
+            case CadPolyline polyline:
+                fields.Add($"Closed: {polyline.IsClosed}");
+                fields.Add($"Vertices: {string.Join(" ", polyline.Vertices.Select(FormatPoint))}");
+                fields.Add($"Length: {Format(polyline.Length)}");
+                if (polyline.IsClosed) fields.Add($"Area: {Format(polyline.Area)}");
+                break;
+            case CadText label:
+                fields.Add($"Position: {FormatPoint(label.Position)}");
+                fields.Add($"Height: {Format(label.Height)}");
+                fields.Add($"Rotation: {Format(label.RotationDegrees)} degrees");
+                fields.Add($"Text: {label.Text}");
+                break;
+            case CadDimension dimension:
+                fields.Add($"Dimension type: {dimension.DimensionType}");
+                fields.Add($"Start: {FormatPoint(dimension.StartPoint)}");
+                fields.Add($"End: {FormatPoint(dimension.EndPoint)}");
+                fields.Add($"Offset: {FormatPoint(dimension.OffsetPoint)}");
+                fields.Add($"Measurement: {dimension.FormattedText}");
+                break;
+        }
+        return string.Join(Environment.NewLine, fields);
+    }
+
+    private static string DescribeLayer(CadDocument document, CadLayer layer) =>
+        string.Join(Environment.NewLine,
+            $"Layer: {layer.Name}", $"Active: {document.ActiveLayer.Equals(layer.Name, StringComparison.OrdinalIgnoreCase)}",
+            $"Visible: {layer.IsVisible}", $"Color: {layer.ColorHex}",
+            $"Line thickness: {Format(layer.LineThickness)}", $"Locked: {layer.IsLocked}",
+            $"Plottable: {layer.IsPlottable}", $"Protected: {layer.IsProtected}",
+            $"Entities: {document.Entities.Count(entity => entity.Layer.Equals(layer.Name, StringComparison.OrdinalIgnoreCase))}");
+
+    private static string Format(double value) => value.ToString("0.########", CultureInfo.InvariantCulture);
+    private static string FormatPoint(Point2D point) => $"{Format(point.X)};{Format(point.Y)}";
 
     private static bool TryPositionOnLine(CadLine line, Point2D point, out double position)
     {

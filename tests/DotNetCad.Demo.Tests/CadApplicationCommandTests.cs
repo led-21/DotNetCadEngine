@@ -24,6 +24,12 @@ public class CadApplicationCommandTests
                 viewModel.NewDrawingCommand.Execute(null);
                 Assert.Empty(viewModel.Document.Entities);
                 Assert.True(viewModel.RunCadCommand("LAYER PAREDES").Success);
+                Assert.True(viewModel.RunCadCommand("LAYER COLOR PAREDES #123456").Success);
+                Assert.Equal("#123456", viewModel.Layers.Single(layer => layer.Name == "PAREDES").ColorHex);
+                viewModel.UndoCommand.Execute(null);
+                Assert.Equal("#38BDF8", viewModel.Layers.Single(layer => layer.Name == "PAREDES").ColorHex);
+                viewModel.RedoCommand.Execute(null);
+                Assert.Equal("#123456", viewModel.Layers.Single(layer => layer.Name == "PAREDES").ColorHex);
                 Assert.True(viewModel.RunCadCommand("LINE 0;0 4;0").Success);
                 var line = Assert.IsType<CadLine>(Assert.Single(viewModel.Document.Entities));
                 var id = line.Id;

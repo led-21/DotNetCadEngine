@@ -250,6 +250,99 @@ public class CadCommandProcessorTests
         Assert.False(history.CanUndo);
     }
 
+    [Fact]
+    public void LayerVisibilityMovesActiveLayerAndUndoRestoresIt()
+    {
+        var document = new CadDocument();
+        var history = new UndoRedoManager();
+        var geometry = document.GetLayer("Geometry")!;
+
+        var hidden = CadCommandProcessor.Execute(document, history, "LAYER HIDE Geometry");
+        Assert.True(hidden.Success);
+        Assert.True(hidden.LayersChanged);
+        Assert.False(geometry.IsVisible);
+        Assert.Equal("0", document.ActiveLayer);
+        Assert.True(CadCommandProcessor.Execute(document, history, "UNDO").Success);
+        Assert.True(geometry.IsVisible);
+        Assert.Equal("Geometry", document.ActiveLayer);
+        Assert.True(CadCommandProcessor.Execute(document, history, "REDO").Success);
+        Assert.False(geometry.IsVisible);
+
+        Assert.True(CadCommandProcessor.Execute(document, history, "LAYER SHOW Geometry").Success);
+        Assert.True(geometry.IsVisible);
+    }
+
+    [Fact]
+    public void CannotHideTheLastVisibleLayer()
+    {
+        var document = new CadDocument();
+        var history = new UndoRedoManager();
+        foreach (var layer in document.Layers.Where(layer => layer.Name != "Geometry")) layer.IsVisible = false;
+
+        var result = CadCommandProcessor.Execute(document, history, "LAYER HIDE Geometry");
+
+        Assert.False(result.Success);
+        Assert.True(document.GetLayer("Geometry")!.IsVisible);
+        Assert.Equal("Geometry", document.ActiveLayer);
+        Assert.False(history.CanUndo);
+    }
+
+    [Fact]
+    public void LayerColorRecolorsByLayerEntitiesButPreservesCustomColors()
+    {
+        var document = new CadDocument();
+        var history = new UndoRedoManager();
+        var color = document.GetLayer("Geometry")!.ColorHex;
+        var byLayer = new CadLine(new(0, 0), new(1, 0), colorHex: color);
+        var custom = new CadLine(new(0, 1), new(1, 1), colorHex: "#AA0000");
+        document.AddEntity(byLayer);
+        document.AddEntity(custom);
+
+        Assert.True(CadCommandProcessor.Execute(document, history, "LAYER COLOR Geometry #12ab34").Success);
+        Assert.Equal("#12AB34", document.GetLayer("Geometry")!.ColorHex);
+        Assert.Equal("#12AB34", byLayer.ColorHex);
+        Assert.Equal("#AA0000", custom.ColorHex);
+        Assert.True(CadCommandProcessor.Execute(document, history, "UNDO").Success);
+        Assert.Equal(color, document.GetLayer("Geometry")!.ColorHex);
+        Assert.Equal(color, byLayer.ColorHex);
+        Assert.True(CadCommandProcessor.Execute(document, history, "REDO").Success);
+        Assert.Equal("#12AB34", byLayer.ColorHex);
+    }
+
+    [Fact]
+    public void PropertiesReportsPreciseEntityAndLayerDataWithoutEditing()
+    {
+        var document = new CadDocument();
+        var history = new UndoRedoManager();
+        var line = new CadLine(new(1.25, 2), new(4.5, 2));
+        document.AddEntity(line);
+
+        var entity = CadCommandProcessor.Execute(document, history, $"PROPERTIES {line.Id}");
+        Assert.True(entity.Success);
+        Assert.Contains($"ID: {line.Id}", entity.Message);
+        Assert.Contains("Start: 1.25;2", entity.Message);
+        Assert.Contains("Length: 3.25", entity.Message);
+        var layer = CadCommandProcessor.Execute(document, history, "PROPERTIES LAYER Geometry");
+        Assert.True(layer.Success);
+        Assert.Contains("Entities: 1", layer.Message);
+        Assert.Contains("Visible: True", layer.Message);
+        Assert.False(history.CanUndo);
+    }
+
+    [Theory]
+    [InlineData("LAYER COLOR Geometry red")]
+    [InlineData("LAYER COLOR Missing #FFFFFF")]
+    [InlineData("LAYER HIDE Missing")]
+    [InlineData("PROPERTIES not-a-guid")]
+    [InlineData("PROPERTIES LAYER Missing")]
+    public void InvalidLayerOrPropertiesCommandDoesNotChangeHistory(string command)
+    {
+        var document = new CadDocument();
+        var history = new UndoRedoManager();
+        Assert.False(CadCommandProcessor.Execute(document, history, command).Success);
+        Assert.False(history.CanUndo);
+    }
+
     [Theory]
     [InlineData("BREAK", "11;0 12;0")]
     [InlineData("BREAK", "4;1 6;0")]
