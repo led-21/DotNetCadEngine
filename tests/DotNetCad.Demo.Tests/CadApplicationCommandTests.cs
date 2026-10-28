@@ -71,4 +71,61 @@ public class CadApplicationCommandTests
         thread.Join();
         if (error != null) throw error;
     }
+
+    [Fact]
+    public void NewToolbarAndLayerCommandsFunctionCorrectly()
+    {
+        Exception? error = null;
+        var thread = new Thread(() =>
+        {
+            try
+            {
+                var viewModel = new MainViewModel();
+                
+                // Test ZoomExtentsCommand and ResetViewCommand
+                var zoomCalled = false;
+                var resetCalled = false;
+                viewModel.ZoomExtentsHandler = () => { zoomCalled = true; return true; };
+                viewModel.ResetViewHandler = () => { resetCalled = true; };
+
+                viewModel.ZoomExtentsCommand.Execute(null);
+                Assert.True(zoomCalled);
+
+                viewModel.ResetViewCommand.Execute(null);
+                Assert.True(resetCalled);
+
+                // Test AddLayerCommand and ShowAllLayersCommand
+                viewModel.NewLayerInput = "ELETRICA";
+                viewModel.AddLayerCommand.Execute(null);
+                Assert.Contains(viewModel.Layers, l => l.Name == "ELETRICA");
+                Assert.Equal(string.Empty, viewModel.NewLayerInput);
+
+                var layer = viewModel.Layers.First(l => l.Name == "ELETRICA");
+                layer.IsVisible = false;
+                Assert.False(viewModel.Document.Layers.First(l => l.Name == "ELETRICA").IsVisible);
+
+                viewModel.ShowAllLayersCommand.Execute(null);
+                Assert.True(viewModel.Document.Layers.First(l => l.Name == "ELETRICA").IsVisible);
+
+                // Test AddTextPromptCommand
+                viewModel.MouseWorldX = 10.5;
+                viewModel.MouseWorldY = 20.5;
+                viewModel.AddTextPromptCommand.Execute(null);
+                Assert.Contains(viewModel.Document.Entities, e => e is CadText text && text.Position.X == 10.5 && text.Position.Y == 20.5);
+
+                // Test DeleteSelectedCommand
+                var entity = viewModel.Document.Entities.First();
+                entity.IsSelected = true;
+                viewModel.SelectedCount = 1;
+                viewModel.DeleteSelectedCommand.Execute(null);
+                Assert.DoesNotContain(entity, viewModel.Document.Entities);
+                Assert.Equal(0, viewModel.SelectedCount);
+            }
+            catch (Exception ex) { error = ex; }
+        });
+        thread.SetApartmentState(ApartmentState.STA);
+        thread.Start();
+        thread.Join();
+        if (error != null) throw error;
+    }
 }

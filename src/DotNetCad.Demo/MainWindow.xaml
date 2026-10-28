@@ -21,6 +21,10 @@
         <Geometry x:Key="SampleIcon">M 3,5 L 21,5 L 21,19 L 3,19 Z M 8,12 A 2,2 0 1 1 7.99,12 M 16,12 A 2,2 0 1 1 15.99,12 M 5,12 L 19,12</Geometry>
         <Geometry x:Key="UndoIcon">M 9,7 L 4,12 L 9,17 M 4,12 L 15,12 A 5,5 0 0 1 15,22</Geometry>
         <Geometry x:Key="RedoIcon">M 15,7 L 20,12 L 15,17 M 20,12 L 9,12 A 5,5 0 0 0 9,22</Geometry>
+        <Geometry x:Key="ZoomExtentsIcon">M 3,8 L 3,3 L 8,3 M 16,3 L 21,3 L 21,8 M 21,16 L 21,21 L 16,21 M 8,21 L 3,21 L 3,16 M 10,10 A 3,3 0 1 1 9.99,10 M 12,12 L 16,16</Geometry>
+        <Geometry x:Key="ResetViewIcon">M 12,2 L 12,6 M 12,18 L 12,22 M 2,12 L 6,12 M 18,12 L 22,12 M 12,7 A 5,5 0 1 1 11.99,7</Geometry>
+        <Geometry x:Key="DeleteIcon">M 4,7 L 20,7 M 10,11 L 10,17 M 14,11 L 14,17 M 6,7 L 7,20 L 17,20 L 18,7 M 9,7 L 9,4 L 15,4 L 15,7</Geometry>
+        <Geometry x:Key="ClearIcon">M 4,4 L 20,20 M 20,4 L 4,20</Geometry>
     </Window.Resources>
 
     <Window.DataContext>
@@ -61,6 +65,12 @@
                     <Separator Background="#334155" Margin="6,2" />
                     <Button Style="{StaticResource CadToolbarButtonStyle}" Tag="{StaticResource UndoIcon}" Content="Undo" Command="{Binding UndoCommand}" ToolTip="Desfazer (Ctrl+Z)" Margin="4,0" />
                     <Button Style="{StaticResource CadToolbarButtonStyle}" Tag="{StaticResource RedoIcon}" Content="Redo" Command="{Binding RedoCommand}" ToolTip="Refazer (Ctrl+Y)" Margin="4,0" />
+                    <Separator Background="#334155" Margin="6,2" />
+                    <Button Style="{StaticResource CadToolbarButtonStyle}" Tag="{StaticResource ZoomExtentsIcon}" Content="Enquadrar" Command="{Binding ZoomExtentsCommand}" ToolTip="Ajustar zoom para todos os elementos (Zoom Extents)" Margin="4,0" />
+                    <Button Style="{StaticResource CadToolbarButtonStyle}" Tag="{StaticResource ResetViewIcon}" Content="Resetar Visão" Command="{Binding ResetViewCommand}" ToolTip="Redefinir centro e zoom inicial" Margin="4,0" />
+                    <Separator Background="#334155" Margin="6,2" />
+                    <Button Style="{StaticResource CadToolbarButtonStyle}" Tag="{StaticResource DeleteIcon}" Content="Excluir" Command="{Binding DeleteSelectedCommand}" ToolTip="Excluir entidades selecionadas (Del)" Margin="4,0" />
+                    <Button Style="{StaticResource CadToolbarButtonStyle}" Tag="{StaticResource ClearIcon}" Content="Limpar" Command="{Binding ClearDrawingCommand}" ToolTip="Limpar todo o desenho" Margin="4,0" />
                 </StackPanel>
             </DockPanel>
         </Border>
@@ -260,9 +270,23 @@
         </Border>
 
         <!-- Right Layers Inspector -->
-        <Border DockPanel.Dock="Right" Background="#1E293B" BorderBrush="#334155" BorderThickness="1,0,0,0" Width="180">
+        <Border DockPanel.Dock="Right" Background="#1E293B" BorderBrush="#334155" BorderThickness="1,0,0,0" Width="200">
             <DockPanel Margin="6">
-                <TextBlock DockPanel.Dock="Top" Text="LAYERS" Foreground="#94A3B8" FontSize="11" FontWeight="Bold" Margin="4,4,4,8" />
+                <DockPanel DockPanel.Dock="Top" Margin="4,4,4,8">
+                    <Button DockPanel.Dock="Right" Style="{StaticResource CadToolbarButtonStyle}" Content="👁 Todas" Command="{Binding ShowAllLayersCommand}" ToolTip="Tornar todas as camadas visíveis" Margin="4,0,0,0" Padding="6,2" FontSize="10" />
+                    <TextBlock Text="LAYERS" Foreground="#94A3B8" FontSize="11" FontWeight="Bold" VerticalAlignment="Center" />
+                </DockPanel>
+                
+                <DockPanel DockPanel.Dock="Top" Margin="2,0,2,8">
+                    <Button DockPanel.Dock="Right" Style="{StaticResource CadButtonStyle}" Content="+" Command="{Binding AddLayerCommand}" ToolTip="Criar nova camada" Width="26" Height="24" Margin="4,0,0,0" Padding="0" />
+                    <TextBox Text="{Binding NewLayerInput, UpdateSourceTrigger=PropertyChanged}" Background="#0F172A" Foreground="#F8FAFC"
+                             BorderBrush="#475569" BorderThickness="1" Padding="4,2" FontSize="11"
+                             ToolTip="Nome da nova camada. Pressione Enter ou clique em +">
+                        <TextBox.InputBindings>
+                            <KeyBinding Key="Return" Command="{Binding AddLayerCommand}" />
+                        </TextBox.InputBindings>
+                    </TextBox>
+                </DockPanel>
                 <ItemsControl ItemsSource="{Binding Layers}">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
