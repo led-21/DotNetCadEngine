@@ -78,7 +78,21 @@ public sealed class MainViewModel : ObservableObject
         set => SetProperty(ref _consoleInput, value);
     }
 
-    public ObservableCollection<string> ConsoleHistory { get; } = ["Console CAD pronto. Digite HELP para ver os comandos."];
+    public CadConsoleModel Console { get; } = new();
+    public System.Windows.Threading.Dispatcher? UiDispatcher { get; set; }
+    public Func<bool>? InteractiveOperationActive { get; set; }
+    public Action? CancelInteractiveOperation { get; set; }
+    private bool _executingCommand;
+    private bool MutationBlocked => _executingCommand || InteractiveOperationActive?.Invoke()==true;
+    public CadCommandResult ExecuteConsoleEntry()
+    {
+        var input=ConsoleInput;
+        if(string.IsNullOrWhiteSpace(input))return new(true,"");
+        Console.Remember(input);
+        var result=RunCadCommand(input);
+        if(result.Success)ConsoleInput="";
+        return result;
+    }
 
     public int LayerRevision
     {
@@ -204,6 +218,7 @@ public sealed class MainViewModel : ObservableObject
     private void ApplyLayerFilter() { FilteredLayers.Filter=o=>o is LayerItemViewModel l && l.Name.Contains(_layerFilter,StringComparison.OrdinalIgnoreCase); }
     public CadCommandResult OperateLayer(string op,string name,string? argument=null,LayerDeleteMode mode=LayerDeleteMode.Cancel)
     {
+        if(MutationBlocked) { var blocked=new CadCommandResult(false,"Conclua ou cancele a operação interativa antes de alterar camadas.");AppendConsole("ERRO: "+blocked.Message);return blocked; }
         var result=CadLayerOperations.Execute(Document,UndoManager,op,name,argument,mode);
         AppendConsole((result.Success?"CAD: ":"ERRO: ")+result.Message);
         if(result.Success && result.LayersChanged) { DrawingRevision++;RefreshLayers(); }
@@ -276,7 +291,7 @@ public sealed class MainViewModel : ObservableObject
         SaveDrawingCommand = new RelayCommand(SaveDrawingFromToolbar);
         OpenDrawingCommand = new RelayCommand(OpenDrawingFromToolbar);
         NewDrawingCommand = new RelayCommand(NewDrawingFromToolbar);
-        LoadSampleDrawingCommand = new RelayCommand(() => { if (ConfirmPendingChanges()) LoadSampleDrawing(); });
+        LoadSampleDrawingCommand = new RelayCommand(() => { if(MutationBlocked){AppendConsole("ERRO: conclua ou cancele a operação ativa.");return;} if (ConfirmPendingChanges()) LoadSampleDrawing(); });
         ZoomExtentsCommand = new RelayCommand(() =>
         {
             if (ZoomExtentsHandler?.Invoke() == true)
@@ -299,12 +314,7 @@ public sealed class MainViewModel : ObservableObject
         RotateSelectedCommand = new RelayCommand(RotateSelectedEntities);
         MirrorSelectedCommand = new RelayCommand(MirrorSelectedEntities);
         OffsetSelectedCommand = new RelayCommand(OffsetSelectedEntities);
-        ExecuteConsoleCommand = new RelayCommand(() =>
-        {
-            var input = ConsoleInput;
-            ConsoleInput = string.Empty;
-            RunCadCommand(input);
-        });
+        ExecuteConsoleCommand = new RelayCommand(() => ExecuteConsoleEntry());
 
         LoadSampleDrawing();
     }
@@ -328,6 +338,7 @@ public sealed class MainViewModel : ObservableObject
 
     private void ApplyHistoryChange(bool undo)
     {
+        if(MutationBlocked){AppendConsole("ERRO: conclua ou cancele a operação ativa antes de desfazer/refazer.");return;}
         if (undo) UndoManager.Undo();
         else UndoManager.Redo();
         DrawingRevision++;
@@ -336,24 +347,33 @@ public sealed class MainViewModel : ObservableObject
 
     public CadCommandResult RunCadCommand(string input, bool fromMcp = false)
     {
-        if (string.IsNullOrWhiteSpace(input)) return new CadCommandResult(false, "Enter a command.");
-        AppendConsole($"{(fromMcp ? "MCP" : "CAD")}> {input.Trim()}");
-        var trimmed = input.Trim();
-        var result = RunApplicationCommand(trimmed) ?? CadCommandProcessor.Execute(Document, UndoManager, trimmed);
-        AppendConsole($"{(result.Success ? "OK" : "ERROR")}: {result.Message}");
-        if (result.DrawingChanged) DrawingRevision++;
-        if (result.LayersChanged)
+        if(UiDispatcher is { } dispatcher && !dispatcher.CheckAccess())return dispatcher.Invoke(()=>RunCadCommand(input,fromMcp));
+        if(string.IsNullOrWhiteSpace(input))return new(false,"Informe um comando.");
+        var origin=fromMcp?ConsoleOrigin.MCP:ConsoleOrigin.Usuario;
+        if(_executingCommand || InteractiveOperationActive?.Invoke()==true && !CadCommandCatalog.IsReadOnly(input))
         {
-            RefreshLayers();
-
+            var blocked=new CadCommandResult(false,"Operação interativa em andamento. Conclua no viewport ou use Cancelar operação; a entrada do console inicia um novo comando.");
+            Console.Add(blocked.Message,origin,ConsoleSeverity.Aviso);return blocked;
         }
-        return result;
+        if(input.Length>CadConsoleModel.InputLimit)return new(false,"Comando excede o limite de entrada.");
+        _executingCommand=true;
+        try
+        {
+            Console.Add(input.Trim(),origin,command:true);
+            var trimmed=input.Trim();
+            var result=RunApplicationCommand(trimmed) ?? CadCommandProcessor.Execute(Document,UndoManager,trimmed);
+            Console.Add(result.Message,origin,result.Success?ConsoleSeverity.Informacao:ConsoleSeverity.Erro);
+            if(result.DrawingChanged)DrawingRevision++;
+            if(result.LayersChanged)RefreshLayers();
+            return result;
+        }
+        finally {_executingCommand=false;}
     }
 
     private CadCommandResult? RunApplicationCommand(string input)
     {
         if (input.Equals("HELP", StringComparison.OrdinalIgnoreCase))
-            return new(true, CadCommandProcessor.Help + " | ZOOM EXTENTS | SAVE [path.cad] | OPEN [DISCARD] path.cad|path.dxf | NEW [DISCARD]");
+            return new(true, CadCommandCatalog.Help);
         if (input.Equals("ZOOM EXTENTS", StringComparison.OrdinalIgnoreCase))
             return ZoomExtentsHandler?.Invoke() == true
                 ? new(true, "Visible drawing fitted to the viewport.")
@@ -472,13 +492,14 @@ public sealed class MainViewModel : ObservableObject
 
     public void AppendConsole(string line)
     {
-        foreach (var part in line.Split(["\r\n", "\n"], StringSplitOptions.None))
-            ConsoleHistory.Add(part);
-        while (ConsoleHistory.Count > 200) ConsoleHistory.RemoveAt(0);
+        if(UiDispatcher is { } dispatcher && !dispatcher.CheckAccess()) {dispatcher.BeginInvoke(()=>AppendConsole(line));return;}
+        Console.Add(line,line.StartsWith("MCP:")?ConsoleOrigin.MCP:ConsoleOrigin.Sistema,
+            line.StartsWith("ERRO") || line.StartsWith("CAD ERROR")?ConsoleSeverity.Erro:ConsoleSeverity.Informacao);
     }
 
     private void DeleteSelectedEntities()
     {
+        if(MutationBlocked){AppendConsole("ERRO: conclua ou cancele a operação ativa antes de excluir.");return;}
         var toDelete = Document.Entities.Where(e => e.IsSelected).ToList();
         if (toDelete.Any(e=>Document.GetLayer(e.Layer)?.IsLocked!=false)) { AppendConsole("ERRO: seleção contém camada bloqueada.");return; }
         if (toDelete.Count > 0)
@@ -498,6 +519,7 @@ public sealed class MainViewModel : ObservableObject
 
     private void ClearDrawing()
     {
+        if(MutationBlocked){AppendConsole("ERRO: conclua ou cancele a operação ativa.");return;}
         if (Document.Entities.Count == 0) return;
         if (MessageBox.Show("Deseja realmente limpar todas as entidades do desenho atual?", "Limpar Desenho", MessageBoxButton.YesNo, MessageBoxImage.Warning) == MessageBoxResult.Yes)
         {
@@ -654,6 +676,7 @@ public sealed class MainViewModel : ObservableObject
 
     public CadCommandResult ReplaceFromFile(string path)
     {
+        if(MutationBlocked)return new(false,"Conclua ou cancele a operação ativa antes de abrir um desenho.");
         // Stage and validate first; failed reads never prompt to discard the current drawing.
         return OpenDrawing(path, protectPending: true);
     }

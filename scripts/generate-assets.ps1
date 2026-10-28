@@ -9,101 +9,192 @@ Add-Type -AssemblyName System.Drawing
 if (-not (Test-Path $OutputDir)) { New-Item -ItemType Directory -Path $OutputDir -Force | Out-Null }
 if (-not (Test-Path $AppAssetsDir)) { New-Item -ItemType Directory -Path $AppAssetsDir -Force | Out-Null }
 
-Write-Host "Gerando ativos visuais técnicos para DotNetCadEngine..." -ForegroundColor Cyan
+Write-Host "Gerando icones e ativos visuais de alta fidelidade para DotNetCadEngine..." -ForegroundColor Cyan
 
-# Cores da identidade visual técnica
-$cBgDark    = [System.Drawing.Color]::FromArgb(15, 23, 42)     # #0F172A
-$cSurface   = [System.Drawing.Color]::FromArgb(30, 41, 59)     # #1E293B
-$cBorder    = [System.Drawing.Color]::FromArgb(51, 65, 85)     # #334155
-$cGrid      = [System.Drawing.Color]::FromArgb(71, 85, 105)    # #475569
-$cCyan      = [System.Drawing.Color]::FromArgb(56, 189, 248)   # #38BDF8
-$cCyanDark  = [System.Drawing.Color]::FromArgb(2, 132, 199)    # #0284C7
-$cWhite     = [System.Drawing.Color]::FromArgb(248, 250, 252)  # #F8FAFC
-$cMuted     = [System.Drawing.Color]::FromArgb(148, 163, 184)  # #94A3B8
+# Paleta técnica de alta precisão CAD
+$cBgTop       = [System.Drawing.Color]::FromArgb(30, 41, 59)     # #1E293B
+$cBgBottom    = [System.Drawing.Color]::FromArgb(7, 13, 26)      # #070D1A
+$cBorder      = [System.Drawing.Color]::FromArgb(51, 65, 85)     # #334155
+$cBorderGlow  = [System.Drawing.Color]::FromArgb(120, 56, 189, 248) # #38BDF8 semi-glow
+$cGrid        = [System.Drawing.Color]::FromArgb(35, 56, 189, 248) # #38BDF8 @ 14%
+$cCyanLight   = [System.Drawing.Color]::FromArgb(224, 242, 254)  # #E0F2FE
+$cCyanMid     = [System.Drawing.Color]::FromArgb(56, 189, 248)    # #38BDF8
+$cBlueDark    = [System.Drawing.Color]::FromArgb(2, 132, 199)     # #0284C7
+$cWhite       = [System.Drawing.Color]::FromArgb(255, 255, 255)   # #FFFFFF
+$cMuted       = [System.Drawing.Color]::FromArgb(148, 163, 184)   # #94A3B8
 
-function Draw-CadIcon([System.Drawing.Graphics]$g, [int]$width, [int]$height) {
+function Draw-ModernCadIcon([System.Drawing.Graphics]$g, [int]$size) {
     $g.SmoothingMode = [System.Drawing.Drawing2D.SmoothingMode]::AntiAlias
     $g.InterpolationMode = [System.Drawing.Drawing2D.InterpolationMode]::HighQualityBicubic
     $g.PixelOffsetMode = [System.Drawing.Drawing2D.PixelOffsetMode]::HighQuality
+    $g.TextRenderingHint = [System.Drawing.Text.TextRenderingHint]::ClearTypeGridFit
 
-    # Background card
-    $margin = [Math]::Max(1, [int]($width * 0.05))
-    $rectW = $width - (2 * $margin)
-    $rectH = $height - (2 * $margin)
-    $rect = New-Object System.Drawing.Rectangle($margin, $margin, $rectW, $rectH)
-    $brushBg = New-Object System.Drawing.SolidBrush($cBgDark)
-    $penBorder = New-Object System.Drawing.Pen($cBorder, [float]([Math]::Max(1.0, $width * 0.025)))
-    
-    # Fill rounded or rect
-    $g.FillRectangle($brushBg, $rect)
-    $g.DrawRectangle($penBorder, $rect)
+    $scale = [float]($size / 256.0)
 
-    # Grid lines / dots
-    $penGrid = New-Object System.Drawing.Pen($cGrid, 1.0)
-    $penGrid.DashStyle = [System.Drawing.Drawing2D.DashStyle]::Dash
-    $step = [Math]::Max(4, [int]($width / 6))
-    for ($x = $rect.Left + $step; $x -lt $rect.Right; $x += $step) {
-        $g.DrawLine($penGrid, $x, $rect.Top, $x, $rect.Bottom)
-    }
-    for ($y = $rect.Top + $step; $y -lt $rect.Bottom; $y += $step) {
-        $g.DrawLine($penGrid, $rect.Left, $y, $rect.Right, $y)
-    }
+    # 1. Base Squircle / Rounded Tech Container
+    $margin = [float](14.0 * $scale)
+    $cardSize = [float]($size - (2.0 * $margin))
+    $radius = [float](54.0 * $scale)
+    $d = [float]($radius * 2.0)
 
-    # CAD Arc
-    $penArc = New-Object System.Drawing.Pen($cCyanDark, [float]([Math]::Max(1.0, $width * 0.03)))
-    $penArc.DashStyle = [System.Drawing.Drawing2D.DashStyle]::DashDot
-    $arcRect = New-Object System.Drawing.Rectangle([int]($width * 0.15), [int]($height * 0.15), [int]($width * 0.7), [int]($height * 0.7))
-    $g.DrawArc($penArc, $arcRect, 180, 90)
+    $pathCard = New-Object System.Drawing.Drawing2D.GraphicsPath
+    $pathCard.AddArc($margin, $margin, $d, $d, 180, 90)
+    $pathCard.AddArc([float]($margin + $cardSize - $d), $margin, $d, $d, 270, 90)
+    $pathCard.AddArc([float]($margin + $cardSize - $d), [float]($margin + $cardSize - $d), $d, $d, 0, 90)
+    $pathCard.AddArc($margin, [float]($margin + $cardSize - $d), $d, $d, 90, 90)
+    $pathCard.CloseFigure()
 
-    # Main CAD Geometric Polygon (Mechanical Bracket)
-    $p1 = New-Object System.Drawing.PointF([float]($width * 0.22), [float]($height * 0.78))
-    $p2 = New-Object System.Drawing.PointF([float]($width * 0.78), [float]($height * 0.78))
-    $p3 = New-Object System.Drawing.PointF([float]($width * 0.78), [float]($height * 0.55))
-    $p4 = New-Object System.Drawing.PointF([float]($width * 0.50), [float]($height * 0.55))
-    $p5 = New-Object System.Drawing.PointF([float]($width * 0.50), [float]($height * 0.22))
-    $p6 = New-Object System.Drawing.PointF([float]($width * 0.22), [float]($height * 0.22))
-    [System.Drawing.PointF[]]$poly = @($p1, $p2, $p3, $p4, $p5, $p6)
+    # Preenchimento gradiente suave da base
+    $ptTop = [System.Drawing.PointF]::new(0, $margin)
+    $ptBottom = [System.Drawing.PointF]::new(0, [float]($margin + $cardSize))
+    $brushCard = [System.Drawing.Drawing2D.LinearGradientBrush]::new($ptTop, $ptBottom, $cBgTop, $cBgBottom)
+    $g.FillPath($brushCard, $pathCard)
 
-    $brushPoly = New-Object System.Drawing.SolidBrush([System.Drawing.Color]::FromArgb(200, 30, 41, 59))
-    $penPoly = New-Object System.Drawing.Pen($cCyan, [float]([Math]::Max(1.5, $width * 0.04)))
-    $penPoly.LineJoin = [System.Drawing.Drawing2D.LineJoin]::Round
+    # Borda externa técnica
+    $borderW = [float]([Math]::Max(1.0, 3.0 * $scale))
+    $penBorder = [System.Drawing.Pen]::new($cBorder, $borderW)
+    $g.DrawPath($penBorder, $pathCard)
 
-    $g.FillPolygon($brushPoly, $poly)
-    $g.DrawPolygon($penPoly, $poly)
-
-    # Snaps & Dimension arrow
-    if ($width -ge 32) {
-        $penSnap = New-Object System.Drawing.Pen($cWhite, [float]([Math]::Max(1.0, $width * 0.025)))
-        $snapSz = [Math]::Max(2.0, $width * 0.05)
-        $g.DrawRectangle($penSnap, [float]($p1.X - $snapSz/2), [float]($p1.Y - $snapSz/2), $snapSz, $snapSz)
-        $g.DrawRectangle($penSnap, [float]($p2.X - $snapSz/2), [float]($p2.Y - $snapSz/2), $snapSz, $snapSz)
-
-        # Dimension line
-        $dimY = [float]($height * 0.88)
-        if ($dimY -lt ($height - 2)) {
-            $penDim = New-Object System.Drawing.Pen($cCyan, 1.0)
-            $g.DrawLine($penDim, $p1.X, $dimY, $p2.X, $dimY)
-            $g.DrawLine($penDim, $p1.X, [float]($dimY - 3), $p1.X, [float]($dimY + 3))
-            $g.DrawLine($penDim, $p2.X, [float]($dimY - 3), $p2.X, [float]($dimY + 3))
+    # 2. Grade Blueprint e Mostrador de Compasso (para ícones >= 48px)
+    if ($size -ge 48) {
+        $penGrid = [System.Drawing.Pen]::new($cGrid, [float]([Math]::Max(1.0, 1.0 * $scale)))
+        $penGrid.DashStyle = [System.Drawing.Drawing2D.DashStyle]::Dash
+        $gridStep = [float](32.0 * $scale)
+        for ($x = $margin + $gridStep; $x -lt ($margin + $cardSize); $x += $gridStep) {
+            $g.DrawLine($penGrid, $x, [float]($margin + 6.0), $x, [float]($margin + $cardSize - 6.0))
         }
+        for ($y = $margin + $gridStep; $y -lt ($margin + $cardSize); $y += $gridStep) {
+            $g.DrawLine($penGrid, [float]($margin + 6.0), $y, [float]($margin + $cardSize - 6.0), $y)
+        }
+
+        # Anel de compasso técnico concêntrico
+        $penCompass = [System.Drawing.Pen]::new([System.Drawing.Color]::FromArgb(45, 56, 189, 248), [float](1.0 * $scale))
+        $penCompass.DashStyle = [System.Drawing.Drawing2D.DashStyle]::Dot
+        $center = [float]($size / 2.0)
+        $r1 = [float](76.0 * $scale)
+        $g.DrawEllipse($penCompass, [float]($center - $r1), [float]($center - $r1), [float](2.0 * $r1), [float](2.0 * $r1))
+        $penCompass.Dispose()
+        $penGrid.Dispose()
     }
 
-    $brushBg.Dispose()
+    # 3. Braço / Régua Vertical do Compasso (Spine)
+    $spineX = [float](76.0 * $scale)
+    $spineY = [float](56.0 * $scale)
+    $spineW = [float](28.0 * $scale)
+    $spineH = [float](144.0 * $scale)
+    $spineR = [float]([Math]::Max(2.0, 6.0 * $scale))
+    $sd = [float]($spineR * 2.0)
+
+    $pathSpine = New-Object System.Drawing.Drawing2D.GraphicsPath
+    $pathSpine.AddArc($spineX, $spineY, $sd, $sd, 180, 90)
+    $pathSpine.AddArc([float]($spineX + $spineW - $sd), $spineY, $sd, $sd, 270, 90)
+    $pathSpine.AddArc([float]($spineX + $spineW - $sd), [float]($spineY + $spineH - $sd), $sd, $sd, 0, 90)
+    $pathSpine.AddArc($spineX, [float]($spineY + $spineH - $sd), $sd, $sd, 90, 90)
+    $pathSpine.CloseFigure()
+
+    $ptSpine1 = [System.Drawing.PointF]::new($spineX, $spineY)
+    $ptSpine2 = [System.Drawing.PointF]::new($spineX, [float]($spineY + $spineH))
+    $brushSpine = [System.Drawing.Drawing2D.LinearGradientBrush]::new($ptSpine1, $ptSpine2, $cCyanMid, $cBlueDark)
+    $g.FillPath($brushSpine, $pathSpine)
+
+    # Marcadores de graduação (ticks) da régua
+    if ($size -ge 40) {
+        $penTick = [System.Drawing.Pen]::new([System.Drawing.Color]::FromArgb(210, 2, 132, 199), [float]([Math]::Max(1.0, 1.8 * $scale)))
+        $tickStep = [float](16.0 * $scale)
+        for ($ty = $spineY + $tickStep; $ty -lt ($spineY + $spineH - 6.0); $ty += $tickStep) {
+            $tickLen = if (([int]($ty / $tickStep)) % 2 -eq 0) { [float](10.0 * $scale) } else { [float](6.0 * $scale) }
+            $g.DrawLine($penTick, $spineX, [float]$ty, [float]($spineX + $tickLen), [float]$ty)
+        }
+        $penTick.Dispose()
+    }
+
+    # 4. Fita Curva de Precisão (Arco do Monograma CAD)
+    $arcStrokeW = [float]([Math]::Max(2.5, 17.0 * $scale))
+    $penArc = [System.Drawing.Pen]::new($cCyanMid, $arcStrokeW)
+    $penArc.StartCap = [System.Drawing.Drawing2D.LineCap]::Round
+    $penArc.EndCap = [System.Drawing.Drawing2D.LineCap]::Round
+
+    $arcRectX = [float](86.0 * $scale)
+    $arcRectY = [float](62.0 * $scale)
+    $arcRectW = [float](110.0 * $scale)
+    $arcRectH = [float](132.0 * $scale)
+    $g.DrawArc($penArc, $arcRectX, $arcRectY, $arcRectW, $arcRectH, 270, 180)
+
+    # Linha de destaque luminoso interno do arco
+    if ($size -ge 32) {
+        $penHighlight = [System.Drawing.Pen]::new($cCyanLight, [float]([Math]::Max(1.0, 3.2 * $scale)))
+        $penHighlight.StartCap = [System.Drawing.Drawing2D.LineCap]::Round
+        $penHighlight.EndCap = [System.Drawing.Drawing2D.LineCap]::Round
+        $g.DrawArc($penHighlight, [float]($arcRectX + 2.0 * $scale), [float]($arcRectY + 2.0 * $scale), [float]($arcRectW - 4.0 * $scale), [float]($arcRectH - 4.0 * $scale), 280, 160)
+        $penHighlight.Dispose()
+    }
+
+    # 5. Diagonal Estrutural de Engenharia (Trelica CAD 45°)
+    if ($size -ge 24) {
+        $pStrut1 = [System.Drawing.PointF]::new([float](88.0 * $scale), [float](186.0 * $scale))
+        $pStrut2 = [System.Drawing.PointF]::new([float](172.0 * $scale), [float](104.0 * $scale))
+        $penStrut = [System.Drawing.Pen]::new([System.Drawing.Color]::FromArgb(230, 2, 132, 199), [float]([Math]::Max(1.5, 9.5 * $scale)))
+        $penStrut.StartCap = [System.Drawing.Drawing2D.LineCap]::Round
+        $penStrut.EndCap = [System.Drawing.Drawing2D.LineCap]::Round
+        $g.DrawLine($penStrut, $pStrut1, $pStrut2)
+        $penStrut.Dispose()
+    }
+
+    # 6. Snap Nodes / Pontos de Precisão (Vertices CAD)
+    $nodeR = [float]([Math]::Max(1.5, 7.0 * $scale))
+    $penNodeBorder = [System.Drawing.Pen]::new($cBlueDark, [float]([Math]::Max(1.0, 2.0 * $scale)))
+    $brushNode = [System.Drawing.SolidBrush]::new($cWhite)
+
+    # Vértice Superior
+    $topX = [float](102.0 * $scale)
+    $topY = [float](62.0 * $scale)
+    $g.FillEllipse($brushNode, [float]($topX - $nodeR), [float]($topY - $nodeR), [float](2.0 * $nodeR), [float](2.0 * $nodeR))
+    $g.DrawEllipse($penNodeBorder, [float]($topX - $nodeR), [float]($topY - $nodeR), [float](2.0 * $nodeR), [float](2.0 * $nodeR))
+
+    # Vértice Ápice Direito (Ponto Focal)
+    $apexX = [float](196.0 * $scale)
+    $apexY = [float](128.0 * $scale)
+    $apexR = [float]([Math]::Max(2.0, 8.0 * $scale))
+    $g.FillEllipse($brushNode, [float]($apexX - $apexR), [float]($apexY - $apexR), [float](2.0 * $apexR), [float](2.0 * $apexR))
+    $g.DrawEllipse($penNodeBorder, [float]($apexX - $apexR), [float]($apexY - $apexR), [float](2.0 * $apexR), [float](2.0 * $apexR))
+
+    # Vértice Inferior
+    $botX = [float](102.0 * $scale)
+    $botY = [float](194.0 * $scale)
+    $g.FillEllipse($brushNode, [float]($botX - $nodeR), [float]($botY - $nodeR), [float](2.0 * $nodeR), [float](2.0 * $nodeR))
+    $g.DrawEllipse($penNodeBorder, [float]($botX - $nodeR), [float]($botY - $nodeR), [float](2.0 * $nodeR), [float](2.0 * $nodeR))
+
+    # Mira de Alvo Central / Crosshair (para ícones >= 48px)
+    if ($size -ge 48) {
+        $penCross = [System.Drawing.Pen]::new($cCyanMid, [float]([Math]::Max(1.0, 1.5 * $scale)))
+        $cX = [float](138.0 * $scale)
+        $cY = [float](128.0 * $scale)
+        $cR = [float](5.0 * $scale)
+        $g.DrawEllipse($penCross, [float]($cX - $cR), [float]($cY - $cR), [float](2.0 * $cR), [float](2.0 * $cR))
+        $g.DrawLine($penCross, [float]($cX - 8.0 * $scale), $cY, [float]($cX + 8.0 * $scale), $cY)
+        $g.DrawLine($penCross, $cX, [float]($cY - 8.0 * $scale), $cX, [float]($cY + 8.0 * $scale))
+        $penCross.Dispose()
+    }
+
+    # Descarte de objetos gráficos
+    $brushCard.Dispose()
     $penBorder.Dispose()
-    $penGrid.Dispose()
+    $pathCard.Dispose()
+    $pathSpine.Dispose()
+    $brushSpine.Dispose()
     $penArc.Dispose()
-    $brushPoly.Dispose()
-    $penPoly.Dispose()
+    $brushNode.Dispose()
+    $penNodeBorder.Dispose()
 }
 
-# 1. Gerar tamanhos de ícone para o ICO
+# 1. Gerar bitmaps em múltiplas resoluções para o arquivo .ICO
 $sizes = @(16, 24, 32, 48, 64, 128, 256)
 $bitmaps = @()
 foreach ($sz in $sizes) {
-    $bmp = New-Object System.Drawing.Bitmap($sz, $sz, [System.Drawing.Imaging.PixelFormat]::Format32bppArgb)
+    $bmp = [System.Drawing.Bitmap]::new($sz, $sz, [System.Drawing.Imaging.PixelFormat]::Format32bppArgb)
     $gfx = [System.Drawing.Graphics]::FromImage($bmp)
     $gfx.Clear([System.Drawing.Color]::Transparent)
-    Draw-CadIcon $gfx $sz $sz
+    Draw-ModernCadIcon $gfx $sz
     $gfx.Dispose()
     $bitmaps += $bmp
 }
@@ -113,17 +204,17 @@ $icoPath = Join-Path $AppAssetsDir "dotnetcad.ico"
 $icoInstallerPath = Join-Path $OutputDir "dotnetcad.ico"
 
 $fs = [System.IO.File]::Create($icoPath)
-$bw = New-Object System.IO.BinaryWriter($fs)
+$bw = [System.IO.BinaryWriter]::new($fs)
 
 # ICONHEADER
 $bw.Write([uint16]0) # Reserved
 $bw.Write([uint16]1) # Type (1 = Icon)
 $bw.Write([uint16]$sizes.Count) # Image count
 
-# PNG streams for each size
+# PNG streams para cada tamanho
 $pngStreams = @()
 foreach ($bmp in $bitmaps) {
-    $ms = New-Object System.IO.MemoryStream
+    $ms = [System.IO.MemoryStream]::new()
     $bmp.Save($ms, [System.Drawing.Imaging.ImageFormat]::Png)
     $pngStreams += $ms
 }
@@ -155,62 +246,64 @@ foreach ($ms in $pngStreams) {
 $bw.Flush()
 $fs.Close()
 Copy-Item -Path $icoPath -Destination $icoInstallerPath -Force
-Write-Host "Ícone criado: $icoPath ($($sizes.Count) resoluções)" -ForegroundColor Green
+Write-Host "Novo icone de alta qualidade criado: $icoPath ($($sizes.Count) resolucoes)" -ForegroundColor Green
 
 # 2. Gerar Wizard Banner (164 x 314 BMP) para Inno Setup
 $bannerWidth = 164
 $bannerHeight = 314
-$bannerBmp = New-Object System.Drawing.Bitmap($bannerWidth, $bannerHeight, [System.Drawing.Imaging.PixelFormat]::Format24bppRgb)
+$bannerBmp = [System.Drawing.Bitmap]::new($bannerWidth, $bannerHeight, [System.Drawing.Imaging.PixelFormat]::Format24bppRgb)
 $bgfx = [System.Drawing.Graphics]::FromImage($bannerBmp)
 $bgfx.SmoothingMode = [System.Drawing.Drawing2D.SmoothingMode]::AntiAlias
 
-# Fundo escuro com gradiente sutil
-$bannerBrush = New-Object System.Drawing.Drawing2D.LinearGradientBrush(
-    (New-Object System.Drawing.Point(0, 0)),
-    (New-Object System.Drawing.Point($bannerWidth, $bannerHeight)),
-    $cSurface, $cBgDark
-)
+# Fundo escuro com gradiente
+$ptBanner1 = [System.Drawing.Point]::new(0, 0)
+$ptBanner2 = [System.Drawing.Point]::new($bannerWidth, $bannerHeight)
+$bannerBrush = [System.Drawing.Drawing2D.LinearGradientBrush]::new($ptBanner1, $ptBanner2, $cBgTop, $cBgBottom)
 $bgfx.FillRectangle($bannerBrush, 0, 0, $bannerWidth, $bannerHeight)
 
-# Grade técnica de engenharia
-$penGridB = New-Object System.Drawing.Pen([System.Drawing.Color]::FromArgb(40, 56, 189, 248), 1.0)
+# Grade técnica de engenharia no banner
+$penGridB = [System.Drawing.Pen]::new([System.Drawing.Color]::FromArgb(30, 56, 189, 248), 1.0)
 $penGridB.DashStyle = [System.Drawing.Drawing2D.DashStyle]::Dash
 for ($gx = 16; $gx -lt $bannerWidth; $gx += 24) { $bgfx.DrawLine($penGridB, $gx, 0, $gx, $bannerHeight) }
 for ($gy = 16; $gy -lt $bannerHeight; $gy += 24) { $bgfx.DrawLine($penGridB, 0, $gy, $bannerWidth, $gy) }
 
-# Desenho CAD técnico no centro do banner
-$bgfx.TranslateTransform(14, 80)
-Draw-CadIcon $bgfx 136 136
+# Desenho do ícone no banner
+$bgfx.TranslateTransform(20, 68)
+Draw-ModernCadIcon $bgfx 124
 $bgfx.ResetTransform()
 
-# Textos técnicos na parte inferior do banner
-$fontTech = New-Object System.Drawing.Font("Segoe UI", 9.0, [System.Drawing.FontStyle]::Bold)
-$fontSub = New-Object System.Drawing.Font("Segoe UI", 7.5, [System.Drawing.FontStyle]::Regular)
-$brushCyan = New-Object System.Drawing.SolidBrush($cCyan)
-$brushMuted = New-Object System.Drawing.SolidBrush($cMuted)
+# Tipografia sóbria do banner
+$fontTech = [System.Drawing.Font]::new("Segoe UI", 10.0, [System.Drawing.FontStyle]::Bold)
+$fontSub  = [System.Drawing.Font]::new("Segoe UI", 8.0, [System.Drawing.FontStyle]::Regular)
+$brushCyan = [System.Drawing.SolidBrush]::new($cCyanMid)
+$brushMuted = [System.Drawing.SolidBrush]::new($cMuted)
+$brushWhite = [System.Drawing.SolidBrush]::new($cWhite)
 
-$bgfx.DrawString("DotNetCadEngine", $fontTech, $brushCyan, 16, 235)
-$bgfx.DrawString("CAD 2D Técnico", $fontSub, $brushMuted, 16, 255)
-$bgfx.DrawString("Motor C# / WPF / MCP", $fontSub, $brushMuted, 16, 272)
+$bgfx.DrawString("DotNetCadEngine", $fontTech, $brushCyan, 16, 218)
+$bgfx.DrawString("CAD 2D Técnico", $fontSub, $brushWhite, 16, 240)
+$bgfx.DrawString("Motor C# / WPF / MCP", $fontSub, $brushMuted, 16, 258)
+$bgfx.DrawString("Versão 1.0.0 (x64)", $fontSub, $brushMuted, 16, 276)
 
 $bannerPath = Join-Path $OutputDir "wizard-banner.bmp"
 $bannerBmp.Save($bannerPath, [System.Drawing.Imaging.ImageFormat]::Bmp)
 $bgfx.Dispose()
 $bannerBmp.Dispose()
-Write-Host "Wizard banner criado: $bannerPath" -ForegroundColor Green
+Write-Host "Novo Wizard banner criado: $bannerPath" -ForegroundColor Green
 
-# 3. Gerar Wizard Small (55 x 58 BMP) para o canto superior direito do Inno Setup
+# 3. Gerar Wizard Small (55 x 58 BMP)
 $smallWidth = 55
 $smallHeight = 58
-$smallBmp = New-Object System.Drawing.Bitmap($smallWidth, $smallHeight, [System.Drawing.Imaging.PixelFormat]::Format24bppRgb)
+$smallBmp = [System.Drawing.Bitmap]::new($smallWidth, $smallHeight, [System.Drawing.Imaging.PixelFormat]::Format24bppRgb)
 $sgfx = [System.Drawing.Graphics]::FromImage($smallBmp)
-$sgfx.Clear($cBgDark)
-Draw-CadIcon $sgfx $smallWidth $smallHeight
+$sgfx.Clear($cBgBottom)
+$sgfx.TranslateTransform(-1, 0)
+Draw-ModernCadIcon $sgfx 56
+$sgfx.ResetTransform()
 $smallPath = Join-Path $OutputDir "wizard-small.bmp"
 $smallBmp.Save($smallPath, [System.Drawing.Imaging.ImageFormat]::Bmp)
 $sgfx.Dispose()
 $smallBmp.Dispose()
-Write-Host "Wizard small logo criado: $smallPath" -ForegroundColor Green
+Write-Host "Novo Wizard small logo criado: $smallPath" -ForegroundColor Green
 
 foreach ($bmp in $bitmaps) { $bmp.Dispose() }
-Write-Host "Todos os ativos visuais foram gerados com sucesso!" -ForegroundColor Green
+Write-Host "Todos os novos ativos visuais foram gerados com sucesso!" -ForegroundColor Green

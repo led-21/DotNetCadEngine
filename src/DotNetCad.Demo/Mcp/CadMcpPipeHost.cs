@@ -47,7 +47,7 @@ public sealed class CadMcpPipeHost : IDisposable
                 {
                     var request = JsonSerializer.Deserialize<CadMcpRequest>(line)
                         ?? throw new JsonException("Empty request.");
-                    response = await _dispatcher.InvokeAsync(() => Handle(request));
+                    response = await _dispatcher.InvokeAsync(() => Handle(request), DispatcherPriority.Background);
                 }
                 catch (Exception ex) when (ex is JsonException or ArgumentException)
                 {

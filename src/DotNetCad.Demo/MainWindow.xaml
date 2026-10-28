@@ -63,7 +63,6 @@
                     <Button Style="{StaticResource CadToolbarButtonStyle}" Tag="{StaticResource RedoIcon}" Content="Refazer" Command="{Binding RedoCommand}" ToolTip="Refazer (Ctrl+Y)" Margin="2,2" />
                     <Separator Background="#334155" Margin="6,2" />
                     <Button Style="{StaticResource CadToolbarButtonStyle}" Tag="{StaticResource DeleteIcon}" Content="Excluir seleção" Command="{Binding DeleteSelectedCommand}" ToolTip="Excluir entidades selecionadas (Del)" Margin="2,2" />
-                    <Button Style="{StaticResource CadToolbarButtonStyle}" Tag="{StaticResource ClearIcon}" Content="Apagar tudo…" Command="{Binding ClearDrawingCommand}" ToolTip="Remover todas as entidades com confirmação; permite desfazer" Margin="2,2" />
                     </WrapPanel></StackPanel>
                     <StackPanel MaxWidth="{Binding ActualWidth, ElementName=ActionsHost}"><TextBlock Text="Exibir" Foreground="#94A3B8"/><WrapPanel>
                     <Button Style="{StaticResource CadToolbarButtonStyle}" Tag="{StaticResource ZoomExtentsIcon}" Content="Enquadrar" Command="{Binding ZoomExtentsCommand}" ToolTip="Ajustar zoom para as entidades visíveis" Margin="2,2" />
@@ -110,40 +109,21 @@
         </Border>
 
         <TextBlock DockPanel.Dock="Bottom" Text="{Binding ElementName=Viewport, Path=CommandStatus}" TextWrapping="Wrap" Foreground="#F8FAFC" Background="#172033" Padding="8,3" />
-        <!-- Commands from the user and MCP share the open drawing. -->
-        <Expander x:Name="ConsoleExpander" DockPanel.Dock="Bottom" Header="Console CAD / IA — recolher / expandir" IsExpanded="True" Foreground="#CBD5E1">
-        <DockPanel>
-        <Thumb DockPanel.Dock="Top" Height="6" Cursor="SizeNS" Background="#475569" DragDelta="ResizeConsole" ToolTip="Arraste para ajustar a altura do console" Focusable="True" KeyDown="ResizeConsoleKey"/>
-        <Border x:Name="ConsolePanel" Height="105" MinHeight="65" Background="#111C2E" BorderBrush="#334155" BorderThickness="0,1,0,0" Padding="10,6">
-            <DockPanel LastChildFill="True">
-                <TextBlock DockPanel.Dock="Top" Text="Console CAD / IA" Foreground="#38BDF8" FontSize="10" FontWeight="Bold" Margin="2,0,0,4" />
-                <DockPanel DockPanel.Dock="Bottom" Margin="0,5,0,0">
-                    <Button DockPanel.Dock="Right" Style="{StaticResource CadButtonStyle}" Content="Executar" Command="{Binding ExecuteConsoleCommand}" ToolTip="Executar comando CAD" Margin="6,0,0,0" />
-                    <TextBox Text="{Binding ConsoleInput, UpdateSourceTrigger=PropertyChanged}" Background="#0F172A" Foreground="#F8FAFC"
-                             BorderBrush="#475569" BorderThickness="1" Padding="7,5" FontFamily="Consolas" FontSize="12"
-                             ToolTip="Digite HELP para ver os comandos. Enter executa o comando.">
-                        <TextBox.InputBindings>
-                            <KeyBinding Key="Return" Command="{Binding ExecuteConsoleCommand}" />
-                        </TextBox.InputBindings>
-                    </TextBox>
-                </DockPanel>
-                <ListBox x:Name="ConsoleOutput" ItemsSource="{Binding ConsoleHistory}" Background="#0F172A" Foreground="#CBD5E1"
-                         BorderBrush="#334155" BorderThickness="1" FontFamily="Consolas" FontSize="11" Padding="4"
-                         ScrollViewer.HorizontalScrollBarVisibility="Auto" />
-            </DockPanel>
-        </Border>
-
-        </DockPanel>
-        </Expander>
-
+        <Grid x:Name="WorkspaceGrid">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="*" MinHeight="80"/>
+                <RowDefinition Height="5"/>
+                <RowDefinition x:Name="ConsoleRow" Height="180" MinHeight="76"/>
+            </Grid.RowDefinitions>
+            <DockPanel Grid.Row="0">
         <!-- Left Tool Rail -->
         <Border DockPanel.Dock="Left" Background="#1E293B" BorderBrush="#334155" BorderThickness="0,0,1,0" Width="70">
             <controls:CadToolRail />
         </Border>
 
         <!-- Right Layers Inspector -->
-        <Border DockPanel.Dock="Right" Background="#1E293B" BorderBrush="#334155" BorderThickness="1,0,0,0">
-            <Expander ExpandDirection="Left" IsExpanded="True" Foreground="#CBD5E1"
+        <Border DockPanel.Dock="Right" Background="#1E293B" BorderBrush="#334155" BorderThickness="0">
+            <Expander x:Name="InspectorExpander" ExpandDirection="Left" IsExpanded="True" Foreground="#CBD5E1"
                       ToolTip="Expandir ou recolher camadas">
                 <Expander.Header>
                     <TextBlock Text="Camadas" Margin="2,6" FontWeight="SemiBold">
@@ -151,7 +131,9 @@
                     </TextBlock>
                 </Expander.Header>
             <DockPanel x:Name="InspectorPanel" Margin="6" Width="180" MinWidth="130">
-                <Thumb DockPanel.Dock="Left" Width="6" Cursor="SizeWE" Background="#475569" DragDelta="ResizeInspector" ToolTip="Arraste para ajustar a largura das camadas" Focusable="True" KeyDown="ResizeInspectorKey"/>
+                <Thumb DockPanel.Dock="Left" Width="6" Cursor="SizeWE" Background="Transparent" DragDelta="ResizeInspector" ToolTip="Arraste para ajustar a largura das camadas" Focusable="True" KeyDown="ResizeInspectorKey">
+                    <Thumb.Template><ControlTemplate TargetType="Thumb"><Grid Background="Transparent"><Border Width="1" HorizontalAlignment="Center" Background="#475569"/></Grid></ControlTemplate></Thumb.Template>
+                </Thumb>
                 <DockPanel DockPanel.Dock="Top" Margin="4,4,4,8">
                     <Button DockPanel.Dock="Right" Style="{StaticResource CadToolbarButtonStyle}" Content="👁 Todas" Command="{Binding ShowAllLayersCommand}" ToolTip="Tornar todas as camadas visíveis" Margin="4,0,0,0" Padding="6,2" FontSize="10" />
                     <TextBlock Text="CAMADAS" Foreground="#94A3B8" FontSize="11" FontWeight="Bold" VerticalAlignment="Center" />
@@ -221,5 +203,11 @@
                               MouseWorldY="{Binding MouseWorldY, Mode=TwoWay}"
                               ZoomLevel="{Binding ZoomLevel, Mode=TwoWay}"
                               SelectedCount="{Binding SelectedCount, Mode=TwoWay}" />
+            </DockPanel>
+            <GridSplitter x:Name="ConsoleDivider" Grid.Row="1" Height="5" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" ResizeDirection="Rows" ResizeBehavior="PreviousAndNext" ShowsPreview="True" DragCompleted="ConsoleResized" KeyUp="ConsoleResizeKey" KeyboardIncrement="10" ToolTip="Arraste ou use ↑/↓ para ajustar o console">
+                <GridSplitter.Template><ControlTemplate TargetType="GridSplitter"><Grid Background="Transparent"><Border Height="1" VerticalAlignment="Center" Background="#475569"/></Grid></ControlTemplate></GridSplitter.Template>
+            </GridSplitter>
+            <controls:CadConsole x:Name="ConsoleView" Grid.Row="2" ExpandedChanged="ConsoleExpandedChanged" ResetSizeRequested="ResetConsoleSize"/>
+        </Grid>
     </DockPanel>
 </Window>

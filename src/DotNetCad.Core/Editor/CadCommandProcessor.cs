@@ -11,7 +11,7 @@ public sealed record CadCommandResult(bool Success, string Message, bool Drawing
 /// <summary>Executes one CAD command against the same document and history used by the viewport.</summary>
 public static class CadCommandProcessor
 {
-    public const string Help = "HELP | LINE x1;y1 x2;y2 | CIRCLE x;y radius | RECT x1;y1 x2;y2 | ARC x;y radius start end | POLYLINE x1;y1 x2;y2 [...] | TEXT x;y height words... | DIM x1;y1 x2;y2 offsetX;offsetY | LAYER name | LAYER SHOW|HIDE name | LAYER COLOR name #RRGGBB | LAYER CREATE|ACTIVE|LOCK|UNLOCK name | LAYER RENAME name newName | LAYER DELETE name TRANSFER destination|ENTITIES|CANCEL | LAYER TRANSFER destination [entityId ...] | LAYER SHOWALL | PROPERTIES id | PROPERTIES LAYER name | LIST | BREAK lineId x1;y1 x2;y2 | TRIM lineId boundaryId pickX;pickY | EXTEND lineId boundaryId START|END | OFFSET id distance [LEFT|RIGHT] | MOVE id dx;dy | COPY id dx;dy | ROTATE id centerX;centerY angleDegrees | MIRROR id axisX1;axisY1 axisX2;axisY2 | DELETE id | CLEAR | UNDO | REDO";
+    public static string Help => CadCommandCatalog.Help;
 
     public static CadCommandResult Execute(CadDocument document, UndoRedoManager history, string input)
     {

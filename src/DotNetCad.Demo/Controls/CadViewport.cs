@@ -147,6 +147,12 @@ public sealed class CadViewport : FrameworkElement
 
     #endregion
 
+    public bool HasInteractiveOperation => _modification != null || ActiveTool == CadToolType.Text || _draftStartPoint != null || _polyDraftPoints.Count > 0 || _dimensionStep > 0 || _isDraggingGrip;
+    public void CancelOperation()
+    {
+        ResetDraftState(); _modification=null; _parameterText=""; _textPreview=null;
+        ReleaseMouseCapture(); ActiveTool=CadToolType.Select; InvalidateVisual();
+    }
     public static readonly DependencyProperty CommandStatusProperty = DependencyProperty.Register(nameof(CommandStatus),typeof(string),typeof(CadViewport),new PropertyMetadata("Selecione uma ferramenta."));
     public string CommandStatus { get => (string)GetValue(CommandStatusProperty); private set => SetValue(CommandStatusProperty,value); }
     private int _textStep;

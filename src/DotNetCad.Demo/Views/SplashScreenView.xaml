@@ -133,54 +133,81 @@
                 <Grid />
             </DockPanel>
 
-            <!-- RIGHT PANEL: Discrete Geometric Technical CAD Drafting Layout -->
-            <Canvas Grid.Column="1" Margin="8,16,16,16" ClipToBounds="True" Opacity="0.85">
+            <!-- RIGHT PANEL: Precision CAD Monogram & Technical Drafting Geometry -->
+            <Canvas Grid.Column="1" Margin="8,16,16,16" ClipToBounds="True" Opacity="0.9">
                 <!-- Coordinate Axes (X and Y with arrows) -->
                 <Path Stroke="{StaticResource BorderBrush}" StrokeThickness="1" StrokeDashArray="6 3"
-                      Data="M 30,280 L 240,280 M 50,300 L 50,30" />
-                <TextBlock Text="X" Foreground="{StaticResource TextDimBrush}" FontSize="10" FontFamily="Consolas" Canvas.Left="232" Canvas.Top="284" />
-                <TextBlock Text="Y" Foreground="{StaticResource TextDimBrush}" FontSize="10" FontFamily="Consolas" Canvas.Left="38" Canvas.Top="24" />
+                      Data="M 20,270 L 240,270 M 50,290 L 50,20" />
+                <TextBlock Text="X" Foreground="{StaticResource TextDimBrush}" FontSize="10" FontFamily="Consolas" Canvas.Left="232" Canvas.Top="274" />
+                <TextBlock Text="Y" Foreground="{StaticResource TextDimBrush}" FontSize="10" FontFamily="Consolas" Canvas.Left="38" Canvas.Top="14" />
 
-                <!-- Construction CAD Arc -->
-                <Path Stroke="{StaticResource CyanAccentBrush}" StrokeThickness="1.5" StrokeDashArray="4 4" Opacity="0.5"
-                      Data="M 50,280 A 180,180 0 0,1 230,100" />
+                <!-- Concentric Drafting Compass Dial Arcs -->
+                <Path Stroke="{StaticResource CyanAccentBrush}" StrokeThickness="1" StrokeDashArray="3 5" Opacity="0.3"
+                      Data="M 50,270 A 170,170 0 0,1 220,100" />
+                <Path Stroke="{StaticResource TextDimBrush}" StrokeThickness="0.8" StrokeDashArray="2 4" Opacity="0.25"
+                      Data="M 50,270 A 120,120 0 0,1 170,150" />
 
-                <!-- Technical Bracket Silhouette (Drafting entities) -->
-                <Path Stroke="{StaticResource CyanAccentBrush}" StrokeThickness="2" Fill="#1E293B" Opacity="0.7"
-                      Data="M 50,280 L 210,280 L 210,200 L 130,200 L 130,90 L 50,90 Z" />
+                <!-- Dark Backing Facet -->
+                <Path Fill="#162032" Stroke="{StaticResource BorderBrush}" StrokeThickness="1.5" Opacity="0.8"
+                      Data="M 70,70 L 130,70 C 180,70 210,105 210,155 C 210,205 180,240 130,240 L 70,240 Z" />
+
+                <!-- Inner Triangular Viewport Void -->
+                <Path Fill="#0A0F1D" Stroke="{StaticResource BorderBrush}" StrokeThickness="1"
+                      Data="M 106,110 L 128,110 C 152,110 168,128 168,155 C 168,182 152,200 128,200 L 106,200 Z" />
+
+                <!-- Diagonal Engineering Truss Strut (45 degrees) -->
+                <Line X1="74" Y1="236" X2="180" Y2="130" Stroke="#0284C7" StrokeThickness="7" StrokeStartLineCap="Round" StrokeEndLineCap="Round" />
+                <Line X1="74" Y1="236" X2="180" Y2="130" Stroke="#7DD3FC" StrokeThickness="1.5" StrokeStartLineCap="Round" StrokeEndLineCap="Round" Opacity="0.8" />
+
+                <!-- Sweeping Precision CAD Arc Ribbon -->
+                <Path Stroke="{StaticResource CyanAccentBrush}" StrokeThickness="14" StrokeStartLineCap="Round" StrokeEndLineCap="Round"
+                      Data="M 86,72 C 180,72 216,110 216,155 C 216,200 180,238 86,238" />
+                <!-- Inner Arc Highlight Filament -->
+                <Path Stroke="#E0F2FE" StrokeThickness="2.5" StrokeStartLineCap="Round" StrokeEndLineCap="Round" Opacity="0.9"
+                      Data="M 92,76 C 174,76 208,112 208,155 C 208,198 174,234 92,234" />
+
+                <!-- Vertical Primary Ruler Spine -->
+                <Border Background="{StaticResource CyanAccentBrush}" BorderBrush="#E0F2FE" BorderThickness="1.5"
+                        CornerRadius="4" Width="22" Height="176" Canvas.Left="64" Canvas.Top="67" />
+
+                <!-- Ruler Precision Graduation Ticks -->
+                <Line X1="64" Y1="85" X2="76" Y2="85" Stroke="#0369A1" StrokeThickness="2" />
+                <Line X1="64" Y1="105" X2="72" Y2="105" Stroke="#0369A1" StrokeThickness="1.5" />
+                <Line X1="64" Y1="125" X2="76" Y2="125" Stroke="#0369A1" StrokeThickness="2" />
+                <Line X1="64" Y1="145" X2="72" Y2="145" Stroke="#0369A1" StrokeThickness="1.5" />
+                <Line X1="64" Y1="165" X2="76" Y2="165" Stroke="#0369A1" StrokeThickness="2" />
+                <Line X1="64" Y1="185" X2="72" Y2="185" Stroke="#0369A1" StrokeThickness="1.5" />
+                <Line X1="64" Y1="205" X2="76" Y2="205" Stroke="#0369A1" StrokeThickness="2" />
+                <Line X1="64" Y1="225" X2="72" Y2="225" Stroke="#0369A1" StrokeThickness="1.5" />
+
+                <!-- Precision Snap Nodes (Luminous Geometric Anchors) -->
+                <!-- Top Anchor Snap Node -->
+                <Rectangle Width="10" Height="10" Fill="{StaticResource TextPrimaryBrush}" Stroke="#0284C7" StrokeThickness="2" Canvas.Left="81" Canvas.Top="67" />
+                <!-- Apex Snap Node (Intersection Point) -->
+                <Ellipse Width="12" Height="12" Fill="{StaticResource TextPrimaryBrush}" Stroke="#0284C7" StrokeThickness="2" Canvas.Left="210" Canvas.Top="149" />
+                <Ellipse Width="4" Height="4" Fill="{StaticResource CyanAccentBrush}" Canvas.Left="214" Canvas.Top="153" />
+                <!-- Bottom Anchor Snap Node -->
+                <Rectangle Width="10" Height="10" Fill="{StaticResource TextPrimaryBrush}" Stroke="#0284C7" StrokeThickness="2" Canvas.Left="81" Canvas.Top="233" />
+                <!-- Strut Snap Node -->
+                <Ellipse Width="8" Height="8" Fill="{StaticResource TextPrimaryBrush}" Stroke="#0284C7" StrokeThickness="1.5" Canvas.Left="176" Canvas.Top="126" />
 
                 <!-- Dimension Line with arrows and measurement text -->
-                <!-- Bottom Dimension: 10.000 m -->
-                <Line X1="50" Y1="300" X2="210" Y2="300" Stroke="{StaticResource CyanAccentBrush}" StrokeThickness="1" />
-                <Line X1="50" Y1="294" X2="50" Y2="306" Stroke="{StaticResource CyanAccentBrush}" StrokeThickness="1" />
-                <Line X1="210" Y1="294" X2="210" Y2="306" Stroke="{StaticResource CyanAccentBrush}" StrokeThickness="1" />
+                <Line X1="50" Y1="256" X2="216" Y2="256" Stroke="{StaticResource CyanAccentBrush}" StrokeThickness="1" />
+                <Line X1="50" Y1="250" X2="50" Y2="262" Stroke="{StaticResource CyanAccentBrush}" StrokeThickness="1" />
+                <Line X1="216" Y1="250" X2="216" Y2="262" Stroke="{StaticResource CyanAccentBrush}" StrokeThickness="1" />
                 <!-- Left Arrow -->
-                <Path Fill="{StaticResource CyanAccentBrush}" Data="M 50,300 L 58,297 L 58,303 Z" />
+                <Path Fill="{StaticResource CyanAccentBrush}" Data="M 50,256 L 58,253 L 58,259 Z" />
                 <!-- Right Arrow -->
-                <Path Fill="{StaticResource CyanAccentBrush}" Data="M 210,300 L 202,297 L 202,303 Z" />
+                <Path Fill="{StaticResource CyanAccentBrush}" Data="M 216,256 L 208,253 L 208,259 Z" />
                 <Border Background="{StaticResource BgDarkBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1"
-                        Padding="4,1" Canvas.Left="106" Canvas.Top="292">
-                    <TextBlock Text="10.000 m" Foreground="{StaticResource CyanAccentBrush}" FontSize="9" FontFamily="Consolas" FontWeight="SemiBold" />
+                        Padding="4,1" Canvas.Left="106" Canvas.Top="248">
+                    <TextBlock Text="R 45.000 mm" Foreground="{StaticResource CyanAccentBrush}" FontSize="9" FontFamily="Consolas" FontWeight="SemiBold" />
                 </Border>
 
-                <!-- Precision Snap Points -->
-                <!-- Snap 1: Origin Endpoint (Square) -->
-                <Rectangle Width="8" Height="8" Stroke="{StaticResource TextPrimaryBrush}" StrokeThickness="1.5" Canvas.Left="46" Canvas.Top="276" />
-                <!-- Snap 2: Vertex (Square) -->
-                <Rectangle Width="8" Height="8" Stroke="{StaticResource CyanAccentBrush}" StrokeThickness="1.5" Canvas.Left="206" Canvas.Top="276" />
-                <!-- Snap 3: Inner corner (Square) -->
-                <Rectangle Width="8" Height="8" Stroke="{StaticResource CyanAccentBrush}" StrokeThickness="1.5" Canvas.Left="126" Canvas.Top="196" />
-                <!-- Snap 4: Top Endpoint (Square) -->
-                <Rectangle Width="8" Height="8" Stroke="{StaticResource TextPrimaryBrush}" StrokeThickness="1.5" Canvas.Left="46" Canvas.Top="86" />
-
-                <!-- Intersection marker (Crosshair) -->
-                <Path Stroke="{StaticResource CyanAccentBrush}" StrokeThickness="1" Opacity="0.8"
-                      Data="M 125,90 L 135,90 M 130,85 L 130,95" />
-
-                <!-- Secondary Annotation label in technical style -->
+                <!-- Technical Badge Annotation in technical style -->
                 <Border Background="{StaticResource SurfaceBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1"
-                        CornerRadius="2" Padding="4,2" Canvas.Left="140" Canvas.Top="50" Opacity="0.85">
-                    <TextBlock Text="DXF / SVG / R12" Foreground="{StaticResource TextMutedBrush}" FontSize="8.5" FontFamily="Consolas" />
+                        CornerRadius="2" Padding="4,2" Canvas.Left="144" Canvas.Top="38" Opacity="0.9">
+                    <TextBlock Text="DXF / SVG / CAD" Foreground="{StaticResource TextMutedBrush}" FontSize="8.5" FontFamily="Consolas" />
                 </Border>
             </Canvas>
         </Grid>
