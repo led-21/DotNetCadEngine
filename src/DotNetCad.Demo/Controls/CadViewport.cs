@@ -169,6 +169,7 @@ public sealed class CadViewport : FrameworkElement
 
     // Drafting state
     private Point2D? _draftStartPoint;
+    private Point2D? _arcRadiusPoint;
     private Point2D _draftCurrentPoint;
     private readonly List<Point2D> _polyDraftPoints = [];
     private int _dimensionStep;
@@ -254,6 +255,7 @@ public sealed class CadViewport : FrameworkElement
     public void ResetDraftState()
     {
         _draftStartPoint = null;
+        _arcRadiusPoint = null;
         _polyDraftPoints.Clear();
         _dimensionStep = 0;
         _isBoxSelecting = false;
@@ -594,6 +596,21 @@ public sealed class CadViewport : FrameworkElement
                 var r = p1.DistanceTo(p2);
                 var rPx = r * _transform.Zoom;
                 dc.DrawEllipse(null, draftPen, ToWpfPoint(p1), rPx, rPx);
+            }
+            else if (ActiveTool == CadToolType.Arc)
+            {
+                if (_arcRadiusPoint == null)
+                {
+                    var r = p1.DistanceTo(p2);
+                    var rPx = r * _transform.Zoom;
+                    dc.DrawEllipse(null, draftPen, ToWpfPoint(p1), rPx, rPx);
+                    dc.DrawLine(draftPen, ToWpfPoint(p1), ToWpfPoint(p2));
+                }
+                else
+                {
+                    dc.DrawLine(draftPen, ToWpfPoint(p1), ToWpfPoint(_arcRadiusPoint.Value));
+                    dc.DrawLine(draftPen, ToWpfPoint(p1), ToWpfPoint(p2));
+                }
             }
         }
         else if (_polyDraftPoints.Count > 0)
@@ -1078,6 +1095,36 @@ public sealed class CadViewport : FrameworkElement
                     UndoManager?.ExecuteAction(new AddEntityAction(Document, circle));
                 }
                 _draftStartPoint = null;
+            }
+        }
+        else if (ActiveTool == CadToolType.Arc)
+        {
+            if (_draftStartPoint == null)
+            {
+                _draftStartPoint = pt;
+            }
+            else if (_arcRadiusPoint == null)
+            {
+                _arcRadiusPoint = pt;
+            }
+            else
+            {
+                var center = _draftStartPoint.Value;
+                var r = center.DistanceTo(_arcRadiusPoint.Value);
+                if (r > 0.01)
+                {
+                    var startAngle = Math.Atan2(_arcRadiusPoint.Value.Y - center.Y, _arcRadiusPoint.Value.X - center.X) * 180.0 / Math.PI;
+                    var endAngle = Math.Atan2(pt.Y - center.Y, pt.X - center.X) * 180.0 / Math.PI;
+                    if (startAngle < 0) startAngle += 360;
+                    if (endAngle < 0) endAngle += 360;
+                    if (Math.Abs(endAngle - startAngle) > 0.1)
+                    {
+                        var arc = new CadArc(center, r, startAngle, endAngle, activeLayer, color);
+                        UndoManager?.ExecuteAction(new AddEntityAction(Document, arc));
+                    }
+                }
+                _draftStartPoint = null;
+                _arcRadiusPoint = null;
             }
         }
         else if (ActiveTool == CadToolType.Polyline)

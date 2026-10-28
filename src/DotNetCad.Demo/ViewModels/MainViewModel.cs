@@ -6,6 +6,7 @@ using DotNetCad.Core.Editor;
 using DotNetCad.Core.Entities;
 using DotNetCad.Core.Geometry;
 using DotNetCad.Core.History;
+using DotNetCad.Core.History.Actions;
 using DotNetCad.Demo.Mvvm;
 using DotNetCad.Infrastructure.Dxf;
 using DotNetCad.Infrastructure.Native;
@@ -157,6 +158,20 @@ public sealed class MainViewModel : ObservableObject
     public ICommand NewDrawingCommand { get; }
     public ICommand LoadSampleDrawingCommand { get; }
     public ICommand ExecuteConsoleCommand { get; }
+    public ICommand ZoomExtentsCommand { get; }
+    public ICommand ResetViewCommand { get; }
+    public ICommand DeleteSelectedCommand { get; }
+    public ICommand ClearDrawingCommand { get; }
+    public ICommand AddLayerCommand { get; }
+    public ICommand ShowAllLayersCommand { get; }
+    public ICommand AddTextPromptCommand { get; }
+
+    private string _newLayerInput = string.Empty;
+    public string NewLayerInput
+    {
+        get => _newLayerInput;
+        set => SetProperty(ref _newLayerInput, value);
+    }
 
     public MainViewModel()
     {
@@ -185,6 +200,23 @@ public sealed class MainViewModel : ObservableObject
         OpenDrawingCommand = new RelayCommand(OpenDrawingFromToolbar);
         NewDrawingCommand = new RelayCommand(NewDrawingFromToolbar);
         LoadSampleDrawingCommand = new RelayCommand(LoadSampleDrawing);
+        ZoomExtentsCommand = new RelayCommand(() =>
+        {
+            if (ZoomExtentsHandler?.Invoke() == true)
+                AppendConsole("CAD: Desenho ajustado ao viewport.");
+            else
+                AppendConsole("CAD: Nenhum elemento visível para enquadrar.");
+        });
+        ResetViewCommand = new RelayCommand(() =>
+        {
+            ResetViewHandler?.Invoke();
+            AppendConsole("CAD: Posição e zoom da tela redefinidos.");
+        });
+        DeleteSelectedCommand = new RelayCommand(DeleteSelectedEntities);
+        ClearDrawingCommand = new RelayCommand(ClearDrawing);
+        AddLayerCommand = new RelayCommand(AddLayerFromInput);
+        ShowAllLayersCommand = new RelayCommand(ShowAllLayers);
+        AddTextPromptCommand = new RelayCommand(AddTextPrompt);
         ExecuteConsoleCommand = new RelayCommand(() =>
         {
             var input = ConsoleInput;
@@ -367,6 +399,64 @@ public sealed class MainViewModel : ObservableObject
         foreach (var part in line.Split(["\r\n", "\n"], StringSplitOptions.None))
             ConsoleHistory.Add(part);
         while (ConsoleHistory.Count > 200) ConsoleHistory.RemoveAt(0);
+    }
+
+    private void DeleteSelectedEntities()
+    {
+        var toDelete = Document.Entities.Where(e => e.IsSelected).ToList();
+        if (toDelete.Count > 0)
+        {
+            var actions = toDelete.Select(e => (IUndoableAction)new DeleteEntityAction(Document, e)).ToList();
+            UndoManager.ExecuteAction(new CompositeUndoableAction(actions, $"Delete {toDelete.Count} entities"));
+            SelectedCount = 0;
+            DrawingRevision++;
+            _hasUnsavedChanges = true;
+            AppendConsole($"CAD: {toDelete.Count} entidade(s) excluída(s).");
+        }
+        else
+        {
+            AppendConsole("CAD: Nenhuma entidade selecionada para excluir.");
+        }
+    }
+
+    private void ClearDrawing()
+    {
+        if (Document.Entities.Count == 0) return;
+        if (MessageBox.Show("Deseja realmente limpar todas as entidades do desenho atual?", "Limpar Desenho", MessageBoxButton.YesNo, MessageBoxImage.Warning) == MessageBoxResult.Yes)
+        {
+            RunCadCommand("CLEAR");
+        }
+    }
+
+    private void AddLayerFromInput()
+    {
+        var name = NewLayerInput?.Trim();
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            AppendConsole("CAD ERROR: Informe o nome da nova camada.");
+            return;
+        }
+        RunCadCommand($"LAYER {name}");
+        NewLayerInput = string.Empty;
+    }
+
+    private void ShowAllLayers()
+    {
+        foreach (var layer in Document.Layers)
+        {
+            layer.IsVisible = true;
+        }
+        RefreshLayers();
+        _hasUnsavedChanges = true;
+        DrawingRevision++;
+        AppendConsole("CAD: Todas as camadas estão visíveis.");
+    }
+
+    private void AddTextPrompt()
+    {
+        var x = Math.Round(MouseWorldX, 1);
+        var y = Math.Round(MouseWorldY, 1);
+        RunCadCommand($"TEXT {x};{y} 1.0 Anotação");
     }
 
     private void LoadSampleDrawing()
