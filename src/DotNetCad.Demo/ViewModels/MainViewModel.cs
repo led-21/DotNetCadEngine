@@ -165,6 +165,11 @@ public sealed class MainViewModel : ObservableObject
     public ICommand AddLayerCommand { get; }
     public ICommand ShowAllLayersCommand { get; }
     public ICommand AddTextPromptCommand { get; }
+    public ICommand MoveSelectedCommand { get; }
+    public ICommand CopySelectedCommand { get; }
+    public ICommand RotateSelectedCommand { get; }
+    public ICommand MirrorSelectedCommand { get; }
+    public ICommand OffsetSelectedCommand { get; }
 
     private string _newLayerInput = string.Empty;
     public string NewLayerInput
@@ -217,6 +222,11 @@ public sealed class MainViewModel : ObservableObject
         AddLayerCommand = new RelayCommand(AddLayerFromInput);
         ShowAllLayersCommand = new RelayCommand(ShowAllLayers);
         AddTextPromptCommand = new RelayCommand(AddTextPrompt);
+        MoveSelectedCommand = new RelayCommand(MoveSelectedEntities);
+        CopySelectedCommand = new RelayCommand(CopySelectedEntities);
+        RotateSelectedCommand = new RelayCommand(RotateSelectedEntities);
+        MirrorSelectedCommand = new RelayCommand(MirrorSelectedEntities);
+        OffsetSelectedCommand = new RelayCommand(OffsetSelectedEntities);
         ExecuteConsoleCommand = new RelayCommand(() =>
         {
             var input = ConsoleInput;
@@ -457,6 +467,108 @@ public sealed class MainViewModel : ObservableObject
         var x = Math.Round(MouseWorldX, 1);
         var y = Math.Round(MouseWorldY, 1);
         RunCadCommand($"TEXT {x};{y} 1.0 Anotação");
+    }
+
+    private void MoveSelectedEntities()
+    {
+        var selected = Document.Entities.Where(e => e.IsSelected).ToList();
+        if (selected.Count == 0)
+        {
+            AppendConsole("CAD: Selecione ao menos uma entidade para mover (ou use MOVE id dx;dy).");
+            return;
+        }
+
+        var actions = selected.Select(e => (IUndoableAction)new MoveEntityAction(e, 1.0, 0.0)).ToList();
+        UndoManager.ExecuteAction(new CompositeUndoableAction(actions, $"Move {selected.Count} entities"));
+        _hasUnsavedChanges = true;
+        DrawingRevision++;
+        AppendConsole($"CAD: {selected.Count} entidade(s) movida(s) (+1.0m no eixo X).");
+    }
+
+    private void CopySelectedEntities()
+    {
+        var selected = Document.Entities.Where(e => e.IsSelected).ToList();
+        if (selected.Count == 0)
+        {
+            AppendConsole("CAD: Selecione ao menos uma entidade para copiar (ou use COPY id dx;dy).");
+            return;
+        }
+
+        var actions = new List<IUndoableAction>();
+        foreach (var entity in selected)
+        {
+            var copy = entity.Clone();
+            copy.Translate(1.0, 1.0);
+            actions.Add(new AddEntityAction(Document, copy));
+        }
+        UndoManager.ExecuteAction(new CompositeUndoableAction(actions, $"Copy {selected.Count} entities"));
+        _hasUnsavedChanges = true;
+        DrawingRevision++;
+        AppendConsole($"CAD: {selected.Count} cópia(s) gerada(s) (+1.0m, +1.0m).");
+    }
+
+    private void RotateSelectedEntities()
+    {
+        var selected = Document.Entities.Where(e => e.IsSelected).ToList();
+        if (selected.Count == 0)
+        {
+            AppendConsole("CAD: Selecione ao menos uma entidade para rotacionar (ou use ROTATE id x;y angulo).");
+            return;
+        }
+
+        var actions = new List<IUndoableAction>();
+        foreach (var entity in selected)
+        {
+            var center = entity.BoundingBox.Center;
+            actions.Add(new RotateEntityAction(entity, center, 90.0));
+        }
+        UndoManager.ExecuteAction(new CompositeUndoableAction(actions, $"Rotate {selected.Count} entities 90°"));
+        _hasUnsavedChanges = true;
+        DrawingRevision++;
+        AppendConsole($"CAD: {selected.Count} entidade(s) rotacionada(s) em 90° em torno do centro.");
+    }
+
+    private void MirrorSelectedEntities()
+    {
+        var selected = Document.Entities.Where(e => e.IsSelected).ToList();
+        if (selected.Count == 0)
+        {
+            AppendConsole("CAD: Selecione ao menos uma entidade para espelhar (ou use MIRROR id x1;y1 x2;y2).");
+            return;
+        }
+
+        var actions = new List<IUndoableAction>();
+        foreach (var entity in selected)
+        {
+            var center = entity.BoundingBox.Center;
+            var axisP1 = new Point2D(center.X, center.Y - 5.0);
+            var axisP2 = new Point2D(center.X, center.Y + 5.0);
+            actions.Add(new MirrorEntityAction(entity, axisP1, axisP2));
+        }
+        UndoManager.ExecuteAction(new CompositeUndoableAction(actions, $"Mirror {selected.Count} entities"));
+        _hasUnsavedChanges = true;
+        DrawingRevision++;
+        AppendConsole($"CAD: {selected.Count} entidade(s) espelhada(s) no eixo vertical central.");
+    }
+
+    private void OffsetSelectedEntities()
+    {
+        var selected = Document.Entities.Where(e => e.IsSelected).ToList();
+        if (selected.Count == 0)
+        {
+            AppendConsole("CAD: Selecione ao menos uma entidade para criar offset (ou use OFFSET id distancia).");
+            return;
+        }
+
+        var actions = new List<IUndoableAction>();
+        foreach (var entity in selected)
+        {
+            actions.Add(new OffsetEntityAction(Document, entity, 0.5));
+        }
+        UndoManager.ExecuteAction(new CompositeUndoableAction(actions, $"Offset {selected.Count} entities"));
+        _hasUnsavedChanges = true;
+        DrawingRevision++;
+        AppendConsole($"CAD: Offset de +0.5m aplicado em {selected.Count} entidade(s).");
     }
 
     private void LoadSampleDrawing()
