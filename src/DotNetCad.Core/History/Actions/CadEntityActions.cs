@@ -143,15 +143,21 @@ public sealed class OffsetEntityAction : IUndoableAction
             var offsetVertices = CadConstructionMath.OffsetPolygon(vertices, distance);
             _newEntity = new CadPolyline(offsetVertices, isClosed: true, layer: rect.Layer, colorHex: rect.ColorHex);
         }
+        else if (originalEntity is CadArc arc)
+        {
+            var radius = arc.Radius + distance;
+            if (radius < 0.05) throw new ArgumentException("Offset resulta em raio inválido.");
+            _newEntity = new CadArc(arc.Center, radius, arc.StartAngleDegrees, arc.EndAngleDegrees, arc.Layer, arc.ColorHex);
+        }
         else if (originalEntity is CadPolyline poly)
         {
-            if (!poly.IsClosed) throw new ArgumentException("Offset de polilinha aberta não é suportado; use segmentos individuais.");
-            var offsetVertices = CadConstructionMath.OffsetPolygon(poly.Vertices, distance);
+            if (poly.Vertices.Count < 2) throw new ArgumentException("Polilinha deve ter ao menos 2 vértices.");
+            var offsetVertices = CadConstructionMath.OffsetPolyline(poly.Vertices, isClosed: poly.IsClosed, distance: distance);
             _newEntity = new CadPolyline(offsetVertices, isClosed: poly.IsClosed, layer: poly.Layer, colorHex: poly.ColorHex);
         }
         else
         {
-            throw new ArgumentException("Offset suporta linhas, círculos, retângulos e polilinhas fechadas convexas.");
+            throw new ArgumentException("Offset suporta linhas, círculos, arcos, retângulos e polilinhas.");
         }
         _newEntity.LineThickness = originalEntity.LineThickness;
         var bounds = _newEntity.BoundingBox;

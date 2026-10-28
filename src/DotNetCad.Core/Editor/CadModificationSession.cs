@@ -45,8 +45,8 @@ public sealed class CadModificationSession(CadToolType tool)
     {
         _sources = entities.Where(e => e.IsSelected).ToArray();
         if (_sources.Length == 0) return Fail("Selecione ao menos uma entidade.");
-        if (Tool == CadToolType.Offset && _sources.Any(e => e is not CadLine and not CadCircle))
-            return Fail("Offset interativo suporta apenas linhas e círculos.");
+        if (Tool == CadToolType.Offset && _sources.Any(e => e is not CadLine and not CadCircle and not CadArc and not CadRectangle and not CadPolyline))
+            return Fail("Offset interativo suporta linhas, círculos, arcos, retângulos e polilinhas.");
         if (Tool == CadToolType.Mirror && _sources.Any(e => e is CadText))
             return Fail("Espelhamento de glifos de texto não é suportado.");
         Step = 1; Error = ""; return true;
@@ -184,6 +184,43 @@ public sealed class CadModificationSession(CadToolType tool)
                     var radius = circle.Radius + (_target.DistanceTo(circle.Center) > circle.Radius ? _value : -_value);
                     if (radius < 0.05) return Fail("Offset resulta em raio inválido.");
                     c = new CadCircle(circle.Center,radius,e.Layer,e.ColorHex) { LineThickness = e.LineThickness };
+                }
+                else if (e is CadArc arc)
+                {
+                    var distToCenter = _target.DistanceTo(arc.Center);
+                    if (Math.Abs(distToCenter - arc.Radius) < 1e-6) return Fail("Escolha um lado fora do arco.");
+                    var radius = arc.Radius + (distToCenter > arc.Radius ? _value : -_value);
+                    if (radius < 0.05) return Fail("Offset resulta em raio inválido.");
+                    c = new CadArc(arc.Center, radius, arc.StartAngleDegrees, arc.EndAngleDegrees, e.Layer, e.ColorHex) { LineThickness = e.LineThickness };
+                }
+                else if (e is CadRectangle rect)
+                {
+                    var vertices = rect.GetVertices();
+                    var center = new Point2D(rect.Origin.X + (rect.Width / 2.0), rect.Origin.Y + (rect.Height / 2.0));
+                    var outward = _target.DistanceTo(center) > Math.Min(rect.Width, rect.Height) / 2.0;
+                    var dist = outward ? _value : -_value;
+                    var offsetVertices = CadConstructionMath.OffsetPolygon(vertices, dist);
+                    c = new CadPolyline(offsetVertices, isClosed: true, layer: e.Layer, colorHex: e.ColorHex) { LineThickness = e.LineThickness };
+                }
+                else if (e is CadPolyline poly)
+                {
+                    if (poly.Vertices.Count < 2) return Fail("Polilinha deve ter ao menos 2 vértices.");
+                    double dist = _value;
+                    if (poly.IsClosed)
+                    {
+                        var centroidX = poly.Vertices.Average(p => p.X);
+                        var centroidY = poly.Vertices.Average(p => p.Y);
+                        var outward = _target.DistanceTo(new Point2D(centroidX, centroidY)) > Math.Min(poly.BoundingBox.Width, poly.BoundingBox.Height) / 2.0;
+                        dist = outward ? _value : -_value;
+                    }
+                    else
+                    {
+                        var p1 = poly.Vertices[0]; var p2 = poly.Vertices[1];
+                        var cross = (p2.X - p1.X) * (_target.Y - p1.Y) - (p2.Y - p1.Y) * (_target.X - p1.X);
+                        dist = cross >= 0 ? _value : -_value;
+                    }
+                    var offsetVertices = CadConstructionMath.OffsetPolyline(poly.Vertices, isClosed: poly.IsClosed, distance: dist);
+                    c = new CadPolyline(offsetVertices, isClosed: poly.IsClosed, layer: e.Layer, colorHex: e.ColorHex) { LineThickness = e.LineThickness };
                 }
                 var bnd = c.BoundingBox;
                 if (bnd.IsEmpty || !double.IsFinite(bnd.MinX) || !double.IsFinite(bnd.MaxX) || !double.IsFinite(bnd.MinY) || !double.IsFinite(bnd.MaxY)) return Fail("Geometria resultante inválida.");

@@ -21,7 +21,7 @@ public class OffsetIntegrityTests
     {
         var d = new CadDocument(); var h = new UndoRedoManager(); var line = new CadLine(new(0,0),new(1,0));
         h.ExecuteAction(new AddEntityAction(d,line)); h.Undo();
-        ICadEntity[] invalid = [new CadCircle(new(0,0),1),new CadPolyline([new(0,0),new(1,0)],false),new CadText(),new CadLine(new(0,0),new(0,0))];
+        ICadEntity[] invalid = [new CadCircle(new(0,0),1),new CadPolyline([new(0,0)],false),new CadText(),new CadLine(new(0,0),new(0,0))];
         foreach(var e in invalid) Assert.Throws<ArgumentException>(() => h.ExecuteAction(new OffsetEntityAction(d,e,-2)));
         Assert.Empty(d.Entities); Assert.Equal(1,h.RedoCount); h.Redo(); Assert.Same(line,d.Entities.Single());
     }

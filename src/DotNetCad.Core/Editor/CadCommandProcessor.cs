@@ -152,12 +152,13 @@ public static class CadCommandProcessor
                 case "TRIM" when parts.Length == 4:
                 {
                     if (!TryLine(document, parts[1], out var line, out var error)) return new(false, error);
-                    if (!TryLine(document, parts[2], out var boundary, out error)) return new(false, error);
-                    if (line!.Id == boundary!.Id) return new(false, "Choose a different boundary line.");
+                    if (!TryEntity(document, parts[2], out var boundary, out error)) return new(false, error);
+                    if (line!.Id == boundary!.Id) return new(false, "Choose a different boundary.");
                     if (!Point(parts[3], out var pick)) return InvalidPoint();
                     if (!TryPositionOnLine(line, pick, out _)) return new(false, "Pick point must lie on the line to trim.");
-                    var trimmed = CadConstructionMath.TrimSegment(line.StartPoint, line.EndPoint,
-                        boundary.StartPoint, boundary.EndPoint, pick);
+                    var trimmed = boundary is CadLine boundaryLine
+                        ? CadConstructionMath.TrimSegment(line.StartPoint, line.EndPoint, boundaryLine.StartPoint, boundaryLine.EndPoint, pick)
+                        : CadConstructionMath.TrimSegmentWithEntity(line.StartPoint, line.EndPoint, boundary!, pick);
                     if (trimmed == null) return new(false, "The line and boundary do not intersect as segments.");
                     if (trimmed.Value.Start.DistanceTo(line.StartPoint) < 0.01 &&
                         trimmed.Value.End.DistanceTo(line.EndPoint) < 0.01)
@@ -170,14 +171,18 @@ public static class CadCommandProcessor
                 case "EXTEND" when parts.Length == 4:
                 {
                     if (!TryLine(document, parts[1], out var line, out var error)) return new(false, error);
-                    if (!TryLine(document, parts[2], out var boundary, out error)) return new(false, error);
-                    if (line!.Id == boundary!.Id) return new(false, "Choose a different boundary line.");
+                    if (!TryEntity(document, parts[2], out var boundary, out error)) return new(false, error);
+                    if (line!.Id == boundary!.Id) return new(false, "Choose a different boundary.");
                     var extendStart = parts[3].Equals("START", StringComparison.OrdinalIgnoreCase);
                     if (!extendStart && !parts[3].Equals("END", StringComparison.OrdinalIgnoreCase))
                         return new(false, "Use START or END to select the endpoint to extend.");
-                    var extended = extendStart
-                        ? CadConstructionMath.ExtendSegment(line.EndPoint, line.StartPoint, boundary.StartPoint, boundary.EndPoint)
-                        : CadConstructionMath.ExtendSegment(line.StartPoint, line.EndPoint, boundary.StartPoint, boundary.EndPoint);
+                    var extended = boundary is CadLine boundaryLine
+                        ? (extendStart
+                            ? CadConstructionMath.ExtendSegment(line.EndPoint, line.StartPoint, boundaryLine.StartPoint, boundaryLine.EndPoint)
+                            : CadConstructionMath.ExtendSegment(line.StartPoint, line.EndPoint, boundaryLine.StartPoint, boundaryLine.EndPoint))
+                        : (extendStart
+                            ? CadConstructionMath.ExtendSegmentToEntity(line.EndPoint, line.StartPoint, boundary!)
+                            : CadConstructionMath.ExtendSegmentToEntity(line.StartPoint, line.EndPoint, boundary!));
                     if (extended == null) return new(false, "The selected endpoint cannot reach the boundary segment.");
                     var newStart = extendStart ? extended.Value.End : line.StartPoint;
                     var newEnd = extendStart ? line.EndPoint : extended.Value.End;
@@ -247,7 +252,32 @@ public static class CadCommandProcessor
                         offset = new CadCircle(circle.Center, radius, circle.Layer, circle.ColorHex)
                             { LineThickness = circle.LineThickness };
                     }
-                    else return new(false, "OFFSET supports lines and circles; LEFT/RIGHT applies only to lines.");
+                    else if (entity is CadArc arc && parts.Length == 3)
+                    {
+                        var radius = arc.Radius + distance;
+                        if (radius < 0.05) return new(false, "Offset results in an invalid arc radius.");
+                        offset = new CadArc(arc.Center, radius, arc.StartAngleDegrees, arc.EndAngleDegrees, arc.Layer, arc.ColorHex)
+                            { LineThickness = arc.LineThickness };
+                    }
+                    else if (entity is CadRectangle rect && parts.Length == 3)
+                    {
+                        var vertices = rect.GetVertices();
+                        var offsetVertices = CadConstructionMath.OffsetPolygon(vertices, distance);
+                        offset = new CadPolyline(offsetVertices, isClosed: true, layer: rect.Layer, colorHex: rect.ColorHex)
+                            { LineThickness = rect.LineThickness };
+                    }
+                    else if (entity is CadPolyline poly)
+                    {
+                        if (poly.Vertices.Count < 2) return new(false, "Polyline must have at least 2 vertices.");
+                        var left = parts.Length == 3 || parts[3].Equals("LEFT", StringComparison.OrdinalIgnoreCase);
+                        if (parts.Length == 4 && !left && !parts[3].Equals("RIGHT", StringComparison.OrdinalIgnoreCase))
+                            return new(false, "Use LEFT or RIGHT for a polyline offset.");
+                        var effDist = (!poly.IsClosed && !left) ? -distance : distance;
+                        var offsetVertices = CadConstructionMath.OffsetPolyline(poly.Vertices, isClosed: poly.IsClosed, distance: effDist);
+                        offset = new CadPolyline(offsetVertices, isClosed: poly.IsClosed, layer: poly.Layer, colorHex: poly.ColorHex)
+                            { LineThickness = poly.LineThickness };
+                    }
+                    else return new(false, "OFFSET supports lines, circles, arcs, rectangles, and polylines; LEFT/RIGHT applies to lines and open polylines.");
                     return Add(offset, document, history);
                 }
                 case "MOVE" when parts.Length == 3:
