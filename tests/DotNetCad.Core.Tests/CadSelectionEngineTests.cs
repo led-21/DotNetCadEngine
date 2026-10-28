@@ -51,8 +51,13 @@ public class CadSelectionEngineTests
         var hitLine = CadSelectionEngine.HitTestEntity(line, new Point2D(5, 0.1), toleranceMeters: 0.3);
         Assert.NotNull(hitLine);
 
-        var hitCircle = CadSelectionEngine.HitTestEntity(circle, new Point2D(5, 5), toleranceMeters: 0.3);
+        // Clicking on perimeter contour detects the circle
+        var hitCircle = CadSelectionEngine.HitTestEntity(circle, new Point2D(5, 7.0), toleranceMeters: 0.3);
         Assert.NotNull(hitCircle);
+
+        // Clicking in hollow center does not select the hollow circle
+        var hitHollowCenter = CadSelectionEngine.HitTestEntity(circle, new Point2D(5, 5), toleranceMeters: 0.3);
+        Assert.Null(hitHollowCenter);
 
         var hitMiss = CadSelectionEngine.HitTestEntity(line, new Point2D(5, 5), toleranceMeters: 0.3);
         Assert.Null(hitMiss);

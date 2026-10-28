@@ -21,10 +21,12 @@
         <Geometry x:Key="RotateIcon">M 20,12 A 8,8 0 1 1 12,4 L 12,1 L 16,4.5 L 12,8 L 12,4</Geometry>
         <Geometry x:Key="MirrorIcon">M 12,2 L 12,22 M 4,7 L 10,12 L 4,17 Z M 20,7 L 14,12 L 20,17 Z</Geometry>
         <Geometry x:Key="OffsetIcon">M 4,6 L 20,6 M 4,12 L 20,12 M 4,18 L 20,18</Geometry>
+        <Geometry x:Key="TrimIcon">M 6,6 L 11,11 M 13,13 L 18,18 M 18,6 L 6,18 M 4,4 A 2.5,2.5 0 1 0 4,9 A 2.5,2.5 0 1 0 4,4 M 4,15 A 2.5,2.5 0 1 0 4,20 A 2.5,2.5 0 1 0 4,15</Geometry>
+        <Geometry x:Key="ExtendIcon">M 19,3 L 19,21 M 3,12 L 17,12 M 13,8 L 17,12 L 13,16</Geometry>
     </UserControl.Resources>
     <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
         <StackPanel Orientation="Vertical" Margin="4" HorizontalAlignment="Center">
-        <TextBlock Text="DRAW" Foreground="#94A3B8" FontSize="10" FontWeight="Bold" Margin="4,4,4,6" HorizontalAlignment="Center" />
+        <TextBlock Text="CRIAR" Foreground="#94A3B8" FontSize="10" FontWeight="Bold" Margin="4,4,4,6" HorizontalAlignment="Center" />
         <Button Style="{StaticResource CadIconButtonStyle}" Tag="{StaticResource SelectIcon}" ToolTip="Selecionar entidades (Esc)" AutomationProperties.Name="Selecionar" Margin="2" Command="{Binding SetToolCommand}" CommandParameter="{x:Static editor:CadToolType.Select}" />
         <Button Style="{StaticResource CadIconButtonStyle}" Tag="{StaticResource PanIcon}" ToolTip="Mover tela (Pan)" AutomationProperties.Name="Pan" Margin="2" Command="{Binding SetToolCommand}" CommandParameter="{x:Static editor:CadToolType.Pan}" />
         <Button Style="{StaticResource CadIconButtonStyle}" Tag="{StaticResource LineIcon}" ToolTip="Desenhar linha: clique no início e no fim" AutomationProperties.Name="Linha" Margin="2" Command="{Binding SetToolCommand}" CommandParameter="{x:Static editor:CadToolType.Line}" />
@@ -32,15 +34,17 @@
         <Button Style="{StaticResource CadIconButtonStyle}" Tag="{StaticResource RectangleIcon}" ToolTip="Desenhar retângulo: clique em dois cantos" AutomationProperties.Name="Retângulo" Margin="2" Command="{Binding SetToolCommand}" CommandParameter="{x:Static editor:CadToolType.Rectangle}" />
         <Button Style="{StaticResource CadIconButtonStyle}" Tag="{StaticResource CircleIcon}" ToolTip="Desenhar círculo: clique no centro e no raio" AutomationProperties.Name="Círculo" Margin="2" Command="{Binding SetToolCommand}" CommandParameter="{x:Static editor:CadToolType.Circle}" />
         <Button Style="{StaticResource CadIconButtonStyle}" Tag="{StaticResource ArcIcon}" ToolTip="Desenhar arco: centro, raio e ângulo final" AutomationProperties.Name="Arco" Margin="2" Command="{Binding SetToolCommand}" CommandParameter="{x:Static editor:CadToolType.Arc}" />
-        <Button Style="{StaticResource CadIconButtonStyle}" Tag="{StaticResource TextIcon}" ToolTip="Inserir anotação de texto na coordenada atual" AutomationProperties.Name="Texto" Margin="2" Command="{Binding AddTextPromptCommand}" />
+        <Button Style="{StaticResource CadIconButtonStyle}" Tag="{StaticResource TextIcon}" ToolTip="Inserir texto: conteúdo, altura e ponto de inserção" AutomationProperties.Name="Texto" Margin="2" Command="{Binding AddTextPromptCommand}" />
         <Button Style="{StaticResource CadIconButtonStyle}" Tag="{StaticResource DimensionIcon}" ToolTip="Adicionar cota linear: escolha dois pontos e a posição" AutomationProperties.Name="Cota linear" Margin="2" Command="{Binding SetToolCommand}" CommandParameter="{x:Static editor:CadToolType.Dimension}" />
         <Separator Background="#334155" Margin="4,8" />
-        <TextBlock Text="MODIFY" Foreground="#94A3B8" FontSize="10" FontWeight="Bold" Margin="4,0,4,6" HorizontalAlignment="Center" />
-        <Button Style="{StaticResource CadIconButtonStyle}" Tag="{StaticResource MoveIcon}" ToolTip="Mover entidades selecionadas (+1m X)" AutomationProperties.Name="Mover" Margin="2" Command="{Binding MoveSelectedCommand}" />
-        <Button Style="{StaticResource CadIconButtonStyle}" Tag="{StaticResource CopyIcon}" ToolTip="Copiar entidades selecionadas (+1m)" AutomationProperties.Name="Copiar" Margin="2" Command="{Binding CopySelectedCommand}" />
-        <Button Style="{StaticResource CadIconButtonStyle}" Tag="{StaticResource RotateIcon}" ToolTip="Rotacionar entidades selecionadas (90° centro)" AutomationProperties.Name="Rotacionar" Margin="2" Command="{Binding RotateSelectedCommand}" />
-        <Button Style="{StaticResource CadIconButtonStyle}" Tag="{StaticResource MirrorIcon}" ToolTip="Espelhar entidades selecionadas (eixo vertical)" AutomationProperties.Name="Espelhar" Margin="2" Command="{Binding MirrorSelectedCommand}" />
-        <Button Style="{StaticResource CadIconButtonStyle}" Tag="{StaticResource OffsetIcon}" ToolTip="Offset / Deslocamento paralelo (+0.5m)" AutomationProperties.Name="Offset" Margin="2" Command="{Binding OffsetSelectedCommand}" />
+        <TextBlock Text="EDITAR" Foreground="#94A3B8" FontSize="10" FontWeight="Bold" Margin="4,0,4,6" HorizontalAlignment="Center" />
+        <Button Style="{StaticResource CadIconButtonStyle}" Tag="{StaticResource MoveIcon}" ToolTip="Mover: ponto base e destino; último clique conclui" AutomationProperties.Name="Mover" Margin="2" Command="{Binding MoveSelectedCommand}" />
+        <Button Style="{StaticResource CadIconButtonStyle}" Tag="{StaticResource CopyIcon}" ToolTip="Copiar: ponto base e destino; último clique conclui" AutomationProperties.Name="Copiar" Margin="2" Command="{Binding CopySelectedCommand}" />
+        <Button Style="{StaticResource CadIconButtonStyle}" Tag="{StaticResource RotateIcon}" ToolTip="Rotacionar: pivô, preview angular e direção final; R define referência" AutomationProperties.Name="Rotacionar" Margin="2" Command="{Binding RotateSelectedCommand}" />
+        <Button Style="{StaticResource CadIconButtonStyle}" Tag="{StaticResource MirrorIcon}" ToolTip="Espelhar: eixo por dois pontos e escolha manter/substituir original" AutomationProperties.Name="Espelhar" Margin="2" Command="{Binding MirrorSelectedCommand}" />
+        <Button Style="{StaticResource CadIconButtonStyle}" Tag="{StaticResource OffsetIcon}" ToolTip="Offset: distância digitada ou medida por dois pontos; clique no lado conclui" AutomationProperties.Name="Offset" Margin="2" Command="{Binding OffsetSelectedCommand}" />
+        <Button Style="{StaticResource CadIconButtonStyle}" Tag="{StaticResource TrimIcon}" ToolTip="Aparar (Trim): selecione limites, Enter e clique no segmento a remover (TR)" AutomationProperties.Name="Aparar" Margin="2" Command="{Binding TrimSelectedCommand}" />
+        <Button Style="{StaticResource CadIconButtonStyle}" Tag="{StaticResource ExtendIcon}" ToolTip="Estender (Extend): selecione limites, Enter e clique na extremidade a estender (EX)" AutomationProperties.Name="Estender" Margin="2" Command="{Binding ExtendSelectedCommand}" />
         <Separator Background="#334155" Margin="4,8" />
         <TextBlock Text="SNAPS" Foreground="#94A3B8" FontSize="10" FontWeight="Bold" Margin="4,0,4,6" HorizontalAlignment="Center" />
         <ToggleButton Style="{StaticResource CadSnapToggleStyle}" Tag="{StaticResource OrthoIcon}" IsChecked="{Binding IsOrthoEnabled, Mode=OneWay}" ToolTip="Alternar desenho ortogonal (F8)" AutomationProperties.Name="Modo ortogonal" Margin="2" Command="{Binding ToggleOrthoCommand}" />

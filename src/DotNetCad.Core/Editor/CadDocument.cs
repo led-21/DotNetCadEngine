@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+using DotNetCad.Core.Audit;
 using DotNetCad.Core.Entities;
 using DotNetCad.Core.Geometry;
 
@@ -10,6 +12,10 @@ public sealed class CadDocument
     public List<CadLayer> Layers { get; set; } = [];
     public List<ICadEntity> Entities { get; set; } = [];
     public CadPreferences Preferences { get; set; } = new();
+    public List<CadAiAuditEntry> AiAuditHistory { get; set; } = [];
+
+    [JsonIgnore]
+    public CadStagedProposal? StagedProposal { get; set; }
 
     public CadDocument()
     {

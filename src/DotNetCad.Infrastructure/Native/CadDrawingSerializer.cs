@@ -1,4 +1,5 @@
 using System.Text.Json;
+using DotNetCad.Core.Audit;
 using DotNetCad.Core.Editor;
 using DotNetCad.Core.Entities;
 
@@ -22,6 +23,7 @@ public static class CadDrawingSerializer
         public List<CadLayer>? Layers { get; set; }
         public CadPreferences? Preferences { get; set; }
         public List<EntityFile>? Entities { get; set; }
+        public List<CadAiAuditEntry>? AiAuditHistory { get; set; }
     }
 
     private sealed class EntityFile
@@ -44,7 +46,8 @@ public static class CadDrawingSerializer
             {
                 Type = entity.EntityType.ToString(),
                 Data = JsonSerializer.SerializeToElement(entity, entity.GetType(), JsonOptions)
-            }).ToList()
+            }).ToList(),
+            AiAuditHistory = document.AiAuditHistory.ToList()
         };
         return JsonSerializer.Serialize(file, JsonOptions);
     }
@@ -74,6 +77,9 @@ public static class CadDrawingSerializer
                 Preferences = file.Preferences,
                 Entities = []
             };
+            if (document.GetLayer(document.ActiveLayer)?.IsLocked == true)
+                document.ActiveLayer = document.Layers.FirstOrDefault(l => l.IsVisible && !l.IsLocked)?.Name
+                    ?? throw new InvalidDataException("Drawing has no visible unlocked layer.");
             var ids = new HashSet<Guid>();
             foreach (var item in file.Entities)
             {
@@ -99,6 +105,10 @@ public static class CadDrawingSerializer
                     throw new InvalidDataException("Drawing contains an invalid entity.");
                 entity.IsSelected = false;
                 document.Entities.Add(entity);
+            }
+            if (file.AiAuditHistory is { Count: > 0 })
+            {
+                document.AiAuditHistory = file.AiAuditHistory.ToList();
             }
             return document;
         }

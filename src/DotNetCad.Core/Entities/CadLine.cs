@@ -10,6 +10,7 @@ public sealed class CadLine : CadEntity
     public Point2D EndPoint { get; set; }
 
     public double Length => StartPoint.DistanceTo(EndPoint);
+    public double AngleDegrees => (Math.Atan2(EndPoint.Y - StartPoint.Y, EndPoint.X - StartPoint.X) * 180.0 / Math.PI + 360.0) % 360.0;
     public Point2D Midpoint => new((StartPoint.X + EndPoint.X) / 2.0, (StartPoint.Y + EndPoint.Y) / 2.0);
 
     public CadLine() { }

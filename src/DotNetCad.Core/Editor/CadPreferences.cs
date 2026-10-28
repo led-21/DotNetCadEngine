@@ -1,10 +1,25 @@
+using DotNetCad.Core.Measurements;
+
 namespace DotNetCad.Core.Editor;
 
 public sealed class CadPreferences
 {
+    private int _decimalPrecision = 2;
+    private string _displayUnit = "m";
+
     public double GridIntervalMeters { get; set; } = 0.50;
-    public int DecimalPrecision { get; set; } = 2;
-    public string DisplayUnit { get; set; } = "m";
+
+    public int DecimalPrecision
+    {
+        get => _decimalPrecision;
+        set => _decimalPrecision = Math.Clamp(value, 0, 8);
+    }
+
+    public string DisplayUnit
+    {
+        get => _displayUnit;
+        set => _displayUnit = CadUnitConverter.NormalizeUnit(value);
+    }
 
     public bool IsGridSnapEnabled { get; set; } = true;
     public bool IsOsnapEnabled { get; set; } = true;

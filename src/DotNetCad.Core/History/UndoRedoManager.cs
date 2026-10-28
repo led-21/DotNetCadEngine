@@ -20,10 +20,25 @@ public class UndoRedoManager : INotifyPropertyChanged
     public string UndoDescription => CanUndo ? _undoStack.Peek().Description : string.Empty;
     public string RedoDescription => CanRedo ? _redoStack.Peek().Description : string.Empty;
 
+    /// <summary>
+    /// Returns the actions currently in the undo stack in chronological execution order.
+    /// </summary>
+    public IReadOnlyList<IUndoableAction> UndoActions => _undoStack.Reverse().ToList();
+
     public void ExecuteAction(IUndoableAction action)
     {
         ArgumentNullException.ThrowIfNull(action);
         action.Execute();
+        RecordExecutedAction(action);
+    }
+
+    /// <summary>
+    /// Pushes an already-executed action (such as a <see cref="CompositeUndoableAction"/> from an atomic batch)
+    /// onto the undo stack without calling <see cref="IUndoableAction.Execute"/> a second time.
+    /// </summary>
+    public void RecordExecutedAction(IUndoableAction action)
+    {
+        ArgumentNullException.ThrowIfNull(action);
         _undoStack.Push(action);
         _redoStack.Clear();
         EnforceLimit();

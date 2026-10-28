@@ -49,9 +49,7 @@ public sealed class SetLayerColorAction : IUndoableAction
         _layer = layer;
         _oldColor = layer.ColorHex;
         _newColor = newColor;
-        _byLayerEntities = document.Entities.Where(entity =>
-            entity.Layer.Equals(layer.Name, StringComparison.OrdinalIgnoreCase) &&
-            entity.ColorHex.Equals(_oldColor, StringComparison.OrdinalIgnoreCase)).ToArray();
+        _byLayerEntities = []; // Existing entity colors are explicit, not inferred ByLayer.
     }
 
     public string Description => $"Color layer {_layer.Name} {_newColor}";

@@ -11,11 +11,13 @@ The screenshot shows the sample drawing loaded when the desktop app starts.
 ## What you can do in the demo
 
 - Draw lines, open polylines, rectangles, circles, and linear dimensions on an interactive canvas.
+- Modify existing geometry with dedicated toolbar tools and real-time previews: **Trim (Aparar)**, **Extend (Estender)**, **Move**, **Copy**, **Rotate**, **Mirror**, **Offset**, and **Break**.
+- Real-time interactive feedback: cutting boundaries highlighted in amber dashed lines, trimmed segments in red dashed lines with intersection points, and proposed extensions in green dashed lines with target markers.
 - Pan, zoom, select entities, edit grips, and use window or crossing selection.
 - Toggle object snapping, orthogonal drawing, and polar tracking. Active modes remain highlighted in the toolbar.
-- Show or hide layers and choose the active layer for new geometry.
-- Undo and redo drawing operations; save and reopen native `.cad` drawings, import a supported subset of ASCII DXF, and export DXF or SVG.
-- Create geometry from the integrated CAD/AI console or through an MCP client connected to the open drawing.
+- Show, hide, and lock layers; choose the active layer for new geometry. Locked layers prevent accidental edits.
+- Undo and redo drawing and modification operations; save and reopen native `.cad` drawings, import a supported subset of ASCII DXF, and export DXF or SVG.
+- Create geometry and execute batch workflows from the integrated CAD/AI console or through an MCP client connected to the open drawing.
 
 The app opens with a sample mechanical bracket so the interface can be explored immediately.
 
@@ -41,10 +43,13 @@ dotnet test DotNetCadEngine.slnx
 | Draw | Choose an icon on the left, then click the required points on the canvas. |
 | Finish a polyline | Right-click after placing at least two vertices. |
 | Select | Click an entity, or drag left-to-right for a window selection and right-to-left for a crossing selection. |
-| Edit geometry | Select one entity and drag an available grip. |
+| Edit geometry (Grips) | Select one entity and drag an available grip. |
+| Trim (Aparar) | Click the Trim icon on the modification rail (or type `TR`), select cutting boundary entities (press Enter to confirm), then click the segments to cut. Esc cancels the step; Enter finishes. |
+| Extend (Estender) | Click the Extend icon on the modification rail (or type `EX`), select boundary entities (press Enter), then click near the endpoint you want to extend. |
+| Modify (Move/Copy/Rotate/Mirror/Offset/Break) | Select entities and click the corresponding tool rail icon, or run the command via console. |
 | Pan and zoom | Drag with the middle mouse button; use the mouse wheel to zoom. |
 | Precision modes | Use the highlighted controls on the left, or press `F3` (object snap), `F8` (ortho), and `F10` (polar) while the canvas has focus. |
-| Layers | Use a checkbox to show or hide a layer and the round selector to make a visible layer active. |
+| Layers | Use a checkbox to show/hide a layer, the lock icon to protect it from mutations, and the round selector to make a visible layer active. |
 | New / Open / Save | Use the top toolbar to start a drawing, open `.cad` or `.dxf`, and save a native `.cad` file. The app asks before discarding unsaved changes. |
 | Undo / redo | Use the toolbar or `Ctrl+Z` / `Ctrl+Y` while the canvas has focus. |
 | Reset the example | Click **Sample** in the top toolbar. |
@@ -143,16 +148,24 @@ flowchart LR
     DemoTests[Demo tests] --> Demo
 ```
 
-| Project | Responsibility |
-| --- | --- |
-| `src/DotNetCad.Core` | Entities, geometry, validation, measurements, snapping, selection, document state, and undo/redo. It has no external NuGet packages or WPF references. |
-| `src/DotNetCad.Infrastructure` | ASCII DXF import/export and SVG export. |
-| `src/DotNetCad.Demo` | WPF canvas, mouse and keyboard interaction, layers panel, and file commands. |
-| `src/DotNetCad.Mcp` | Stdio MCP tools that inspect, edit, and export the drawing in the running desktop app. |
-| `tests/DotNetCad.Core.Tests` | Geometry, parsing, snapping, selection, history, and interchange checks. |
-| `tests/DotNetCad.Demo.Tests` | Viewport transformation checks. |
+| Project | Responsibility | Documentation |
+| --- | --- | --- |
+| `src/DotNetCad.Core` | Pure 2D geometric engine, entity models, tolerance policies, polymorphic trimming/extending, session state machines, batch processing, and undo/redo. Zero external NuGet or UI dependencies. | [Core README](src/DotNetCad.Core/README.md) |
+| `src/DotNetCad.Infrastructure` | ASCII DXF import/export, SVG vector export, and native `.cad` JSON serialization. | [Infrastructure README](src/DotNetCad.Infrastructure/README.md) |
+| `src/DotNetCad.Demo` | WPF desktop application with interactive canvas (`CadViewport`), precision snapping, tool rail, HUD messages, and real-time visual previews. | [Demo README](src/DotNetCad.Demo/README.md) |
+| `src/DotNetCad.Mcp` | Stdio MCP (Model Context Protocol) server communicating with the running desktop app via Windows named pipes for AI agents. | [MCP README](src/DotNetCad.Mcp/README.md) |
+| `tests/DotNetCad.Core.Tests` | 177 unit tests covering geometry, scale/precision policies, trimming/extending, batch staging, and undo/redo integrity. | [Tests README](tests/README.md) |
+| `tests/DotNetCad.Demo.Tests` | 62 integration tests covering viewport interactions, STA WPF input completion, and layout matrices. | [Tests README](tests/README.md) |
 
 The core includes line, polyline, rectangle, circle, arc, and dimension entities. It also contains calculations for intersections, offsets, fillets, trimming, extension, transforms, polygon measurements, and coordinate parsing. Keeping these operations in the core makes them usable without launching the desktop app.
+
+## Technical documentation
+
+Detailed technical documentation and engineering specifications:
+
+- [CAD Architecture & Technical Decisions](docs/CAD-ARCHITECTURE-DECISIONS.md): Unified layer rules, console & viewport interaction lifecycle, numeric tolerances, and AI transactional batch processing.
+- [DXF Compatibility Matrix](docs/DXF-COMPATIBILITY-MATRIX.md): Formal Autodesk DXF AC1009 (R12) and AC1015 (2000) import/export compliance.
+- [Packaging & Installer Strategy](docs/INSTALLER.md): Inno Setup 6 architecture, self-contained x64 deployment, and vector splash screen.
 
 ## File formats and current scope
 
@@ -160,11 +173,11 @@ The DXF importer supports a focused subset of ASCII entities: `LINE`, `CIRCLE`, 
 
 SVG export writes vector shapes grouped by visible layer and converts CAD's upward Y axis to SVG coordinates.
 
-Some operations available in the core, including offsets, trimming, extension, fillets, and transforms, do not yet have dedicated controls in the desktop playground. The demo is intended to showcase the engine and its interaction model, rather than to replace a production CAD application.
+Interactive graphical tools with real-time preview and dedicated toolbar controls are available in the desktop playground for **Trim (Aparar)**, **Extend (Estender)**, **Move**, **Copy**, **Rotate**, **Mirror**, **Offset**, and **Break**. All geometric operations in the Core are integrated across graphical tools, the CAD console, and the MCP server.
 
 ## CI
 
-O projeto é compilado e testado automaticamente via GitHub Actions a cada push ou pull request para a branch `main`:
+O projeto é validado sob demanda via GitHub Actions (`workflow_dispatch`):
 - O build completo e os testes da solução (incluindo a interface WPF) são validados no Windows (`windows-latest`).
 - O `DotNetCad.Core` e o `DotNetCad.Infrastructure` são validados de forma desacoplada no Linux (`ubuntu-latest`).
 

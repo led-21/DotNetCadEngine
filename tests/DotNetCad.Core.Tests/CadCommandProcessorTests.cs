@@ -288,7 +288,7 @@ public class CadCommandProcessorTests
     }
 
     [Fact]
-    public void LayerColorRecolorsByLayerEntitiesButPreservesCustomColors()
+    public void LayerColorPreservesAllExplicitEntityColors()
     {
         var document = new CadDocument();
         var history = new UndoRedoManager();
@@ -300,13 +300,13 @@ public class CadCommandProcessorTests
 
         Assert.True(CadCommandProcessor.Execute(document, history, "LAYER COLOR Geometry #12ab34").Success);
         Assert.Equal("#12AB34", document.GetLayer("Geometry")!.ColorHex);
-        Assert.Equal("#12AB34", byLayer.ColorHex);
+        Assert.Equal(color, byLayer.ColorHex);
         Assert.Equal("#AA0000", custom.ColorHex);
         Assert.True(CadCommandProcessor.Execute(document, history, "UNDO").Success);
         Assert.Equal(color, document.GetLayer("Geometry")!.ColorHex);
         Assert.Equal(color, byLayer.ColorHex);
         Assert.True(CadCommandProcessor.Execute(document, history, "REDO").Success);
-        Assert.Equal("#12AB34", byLayer.ColorHex);
+        Assert.Equal(color, byLayer.ColorHex);
     }
 
     [Fact]
@@ -359,5 +359,49 @@ public class CadCommandProcessorTests
         Assert.False(result.Success);
         Assert.Same(line, Assert.Single(document.Entities));
         Assert.False(history.CanUndo);
+    }
+
+    [Fact]
+    public void TrimAndExtend_SupportsCircleAndArcViaConsole()
+    {
+        var document = new CadDocument();
+        var history = new UndoRedoManager();
+
+        // 1. Circle centered at (0, 0), radius 5
+        // Boundary: vertical line at X=0 from (0, -10) to (0, 10)
+        var circle = new CadCircle(new(0, 0), 5.0);
+        var boundary = new CadLine(new(0, -10), new(0, 10));
+        document.AddEntity(circle);
+        document.AddEntity(boundary);
+
+        // Trim right half by clicking at (5, 0)
+        var trimResult = CadCommandProcessor.Execute(document, history, $"TRIM {circle.Id} {boundary.Id} 5;0");
+        Assert.True(trimResult.Success);
+        Assert.True(trimResult.DrawingChanged);
+        Assert.DoesNotContain(document.Entities, e => e.Id == circle.Id && e is CadCircle);
+        var arc = Assert.Single(document.Entities.OfType<CadArc>());
+        Assert.Equal(5.0, arc.Radius, 3);
+
+        // Undo trim
+        history.Undo();
+        Assert.Contains(document.Entities, e => e.Id == circle.Id && e is CadCircle);
+        Assert.Empty(document.Entities.OfType<CadArc>());
+
+        // 2. Extend Arc towards vertical line at X=-5
+        history.Redo(); // Reapply trim
+        var remainingArc = document.Entities.OfType<CadArc>().First();
+        var bound2 = new CadLine(new(-5, -10), new(-5, 10));
+        document.AddEntity(bound2);
+
+        var extResult = CadCommandProcessor.Execute(document, history, $"EXTEND {remainingArc.Id} {bound2.Id} START");
+        Assert.True(extResult.Success);
+        Assert.True(extResult.DrawingChanged);
+        var extendedArc = Assert.Single(document.Entities.OfType<CadArc>());
+        Assert.True(extendedArc.StartAngleDegrees != remainingArc.StartAngleDegrees || extendedArc.EndAngleDegrees != remainingArc.EndAngleDegrees);
+
+        // Undo extend
+        history.Undo();
+        var restoredArc = Assert.Single(document.Entities.OfType<CadArc>());
+        Assert.Equal(remainingArc.StartAngleDegrees, restoredArc.StartAngleDegrees, 3);
     }
 }

@@ -1,0 +1,62 @@
+using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Media;
+using System.Windows.Media.Imaging;
+using DotNetCad.Demo;
+using DotNetCad.Demo.Controls;
+using DotNetCad.Demo.ViewModels;
+using Xunit;
+namespace DotNetCad.Demo.Tests;
+public class LayoutMatrixTests
+{
+    [Fact]
+    public void OpenAndRenderLayoutMatrix()
+    {
+        Exception? error=null;
+        var thread=new Thread(()=>{
+            MainWindow? window=null;
+            try {
+                var app=Application.Current ?? new Application { ShutdownMode=ShutdownMode.OnExplicitShutdown };
+                app.Resources.MergedDictionaries.Add(new ResourceDictionary { Source=new Uri("/DotNetCad.Demo;component/Themes/DarkCadTheme.xaml",UriKind.Relative) });
+                window=new MainWindow { EnableMcpHost=false, EnableLayoutPreferences=false, WindowStartupLocation=WindowStartupLocation.Manual, Left=0,Top=0 };
+                var vm=(MainViewModel)window.DataContext; vm.UnsavedChangesPrompt=()=>MessageBoxResult.No;
+                for(int i=0;i<60;i++) vm.RunCadCommand("LAYER Camada_de_teste_com_nome_longo_"+i);
+                vm.AppendConsole(new string('X',400));
+                window.Show(); window.UpdateLayout();
+                var root=(FrameworkElement)window.Content;
+                var viewport=(CadViewport)window.FindName("Viewport");
+                var console=(CadConsole)window.FindName("ConsoleView");
+                var dir=System.IO.Path.Combine(AppContext.BaseDirectory,"layout-validation");System.IO.Directory.CreateDirectory(dir);
+                var log=new List<string>();
+                foreach(var scale in new[]{1.0,1.5,2.0}) foreach(var size in new[]{(640,480),(800,600),(1100,720)}) {
+                    root.LayoutTransform=Transform.Identity; window.Width=size.Item1;window.Height=size.Item2;window.UpdateLayout();
+                    // At high simulated DPI, persistent panel headers must still allow reclaiming canvas space.
+                    console.IsHistoryExpanded=false;window.UpdateLayout();
+                    Assert.True(viewport.ActualWidth>0 && viewport.ActualHeight>0,$"No viewport at {size}/{scale}");
+                    var bitmap=new RenderTargetBitmap((int)(window.ActualWidth*scale),(int)(window.ActualHeight*scale),96*scale,96*scale,PixelFormats.Pbgra32);bitmap.Render(window);
+                    var encoder=new PngBitmapEncoder();encoder.Frames.Add(BitmapFrame.Create(bitmap));
+                    using(var file=System.IO.File.Create(System.IO.Path.Combine(dir,$"{size.Item1}x{size.Item2}-{scale}.png")))encoder.Save(file);
+                    log.Add($"Window {window.ActualWidth}x{window.ActualHeight}; render DPI scale {scale}; viewport {viewport.ActualWidth}x{viewport.ActualHeight}; native DPI {VisualTreeHelper.GetDpi(window).PixelsPerInchX}; console collapsed");
+                    console.IsHistoryExpanded=true;window.UpdateLayout();
+                    Assert.True(viewport.ActualHeight>=79.5,"Minimum viewport lost with expanded history");
+                    var commandInput=(TextBox)console.FindName("Input");
+                    Assert.True(commandInput.TranslatePoint(new Point(0,commandInput.ActualHeight),root).Y<=root.ActualHeight+1,"Input clipped with expanded history");
+                    var expanded=new RenderTargetBitmap((int)(window.ActualWidth*scale),(int)(window.ActualHeight*scale),96*scale,96*scale,PixelFormats.Pbgra32);expanded.Render(window);
+                    var expandedEncoder=new PngBitmapEncoder();expandedEncoder.Frames.Add(BitmapFrame.Create(expanded));
+                    using(var file=System.IO.File.Create(System.IO.Path.Combine(dir,$"{size.Item1}x{size.Item2}-{scale}-expanded.png")))expandedEncoder.Save(file);
+                }
+                window.Width=1100;window.Height=720;window.UpdateLayout();
+                var divider=(GridSplitter)window.FindName("ConsoleDivider");divider.Focus();
+                var inputSource=PresentationSource.FromVisual(divider)!;
+                var oldHeight=console.ActualHeight;
+                divider.RaiseEvent(new System.Windows.Input.KeyEventArgs(System.Windows.Input.Keyboard.PrimaryDevice,inputSource,0,System.Windows.Input.Key.Up){RoutedEvent=System.Windows.Input.Keyboard.KeyDownEvent});window.UpdateLayout();
+                divider.RaiseEvent(new System.Windows.Input.KeyEventArgs(System.Windows.Input.Keyboard.PrimaryDevice,inputSource,0,System.Windows.Input.Key.Up){RoutedEvent=System.Windows.Input.Keyboard.KeyUpEvent});
+                Assert.True(console.ActualHeight>oldHeight,"GridSplitter keyboard resize failed");
+                root.LayoutTransform=Transform.Identity;window.WindowState=WindowState.Maximized;window.UpdateLayout();
+                log.Add($"Maximized: {window.ActualWidth}x{window.ActualHeight}; viewport {viewport.ActualWidth}x{viewport.ActualHeight}");
+                System.IO.File.WriteAllLines(System.IO.Path.Combine(dir,"results.txt"),log);
+            } catch(Exception ex){error=ex;} finally {window?.Close();}
+        });
+        thread.SetApartmentState(ApartmentState.STA);thread.Start();thread.Join();if(error!=null)throw error;
+    }
+}

@@ -8,9 +8,22 @@ public sealed class CadText : CadEntity
     public override CadEntityType EntityType => CadEntityType.Text;
 
     public Point2D Position { get; set; }
+    public Point2D InsertionPoint => Position;
     public string Text { get; set; } = string.Empty;
     public double Height { get; set; } = 1.0;
     public double RotationDegrees { get; set; }
+
+    public CadText() { }
+
+    public CadText(Point2D position, string text, double height = 1.0, double rotationDegrees = 0.0, string layer = "Geometry", string colorHex = "#38BDF8")
+    {
+        Position = position;
+        Text = text;
+        Height = height;
+        RotationDegrees = rotationDegrees;
+        Layer = layer;
+        ColorHex = colorHex;
+    }
 
     public override BoundingBox2D BoundingBox
     {

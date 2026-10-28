@@ -27,7 +27,7 @@ public class CadDrawingSerializerTests
         var restored = CadDrawingSerializer.Deserialize(CadDrawingSerializer.Serialize(document));
 
         Assert.Equal("Casa.cad", restored.Title);
-        Assert.Equal("PAREDES", restored.ActiveLayer);
+        Assert.Equal("0", restored.ActiveLayer); // Legacy locked active layers migrate to a usable successor.
         Assert.Equal(0.25, restored.Preferences.GridIntervalMeters);
         Assert.True(restored.GetLayer("PAREDES")!.IsLocked);
         Assert.Equal(document.Entities.Select(entity => entity.Id), restored.Entities.Select(entity => entity.Id));

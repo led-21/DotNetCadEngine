@@ -124,6 +124,8 @@ public sealed class OffsetEntityAction : IUndoableAction
         _document = document ?? throw new ArgumentNullException(nameof(document));
         ArgumentNullException.ThrowIfNull(originalEntity);
 
+        if (!double.IsFinite(distance) || Math.Abs(distance) < 0.01) throw new ArgumentException("Offset requer distância finita de pelo menos 0,01.");
+
         if (originalEntity is CadLine line)
         {
             var (start, end) = CadConstructionMath.OffsetSegment(line.StartPoint, line.EndPoint, distance, toLeft: true);
@@ -131,7 +133,9 @@ public sealed class OffsetEntityAction : IUndoableAction
         }
         else if (originalEntity is CadCircle circle)
         {
-            _newEntity = new CadCircle(circle.Center, Math.Max(0.05, circle.Radius + distance), circle.Layer, circle.ColorHex);
+            var validation = GeometryValidator.ValidateCircle(circle.Center, circle.Radius + distance);
+            if (!validation.IsValid) throw new ArgumentException(validation.ErrorMessage);
+            _newEntity = new CadCircle(circle.Center, circle.Radius + distance, circle.Layer, circle.ColorHex);
         }
         else if (originalEntity is CadRectangle rect)
         {
@@ -139,20 +143,104 @@ public sealed class OffsetEntityAction : IUndoableAction
             var offsetVertices = CadConstructionMath.OffsetPolygon(vertices, distance);
             _newEntity = new CadPolyline(offsetVertices, isClosed: true, layer: rect.Layer, colorHex: rect.ColorHex);
         }
+        else if (originalEntity is CadArc arc)
+        {
+            var radius = arc.Radius + distance;
+            if (radius < 0.05) throw new ArgumentException("Offset resulta em raio inválido.");
+            _newEntity = new CadArc(arc.Center, radius, arc.StartAngleDegrees, arc.EndAngleDegrees, arc.Layer, arc.ColorHex);
+        }
         else if (originalEntity is CadPolyline poly)
         {
-            var offsetVertices = CadConstructionMath.OffsetPolygon(poly.Vertices, distance);
+            if (poly.Vertices.Count < 2) throw new ArgumentException("Polilinha deve ter ao menos 2 vértices.");
+            var offsetVertices = CadConstructionMath.OffsetPolyline(poly.Vertices, isClosed: poly.IsClosed, distance: distance);
             _newEntity = new CadPolyline(offsetVertices, isClosed: poly.IsClosed, layer: poly.Layer, colorHex: poly.ColorHex);
         }
         else
         {
-            _newEntity = originalEntity.Clone();
-            _newEntity.Translate(distance, distance);
+            throw new ArgumentException("Offset suporta linhas, círculos, arcos, retângulos e polilinhas.");
         }
+        _newEntity.LineThickness = originalEntity.LineThickness;
+        var bounds = _newEntity.BoundingBox;
+        if (bounds.IsEmpty || !double.IsFinite(bounds.MinX) || !double.IsFinite(bounds.MinY) ||
+            !double.IsFinite(bounds.MaxX) || !double.IsFinite(bounds.MaxY)) throw new ArgumentException("Offset produz geometria inválida.");
     }
 
     public string Description => $"Offset {_newEntity.EntityType}";
 
     public void Execute() => _document.AddEntity(_newEntity);
     public void Undo() => _document.RemoveEntity(_newEntity);
+}
+
+public sealed class ReplaceEntityAction : IUndoableAction
+{
+    private readonly CadDocument _document;
+    private readonly ICadEntity _oldEntity;
+    private readonly ICadEntity _newEntity;
+    private readonly string _description;
+
+    public ReplaceEntityAction(CadDocument document, ICadEntity oldEntity, ICadEntity newEntity, string? description = null)
+    {
+        _document = document ?? throw new ArgumentNullException(nameof(document));
+        _oldEntity = oldEntity ?? throw new ArgumentNullException(nameof(oldEntity));
+        _newEntity = newEntity ?? throw new ArgumentNullException(nameof(newEntity));
+        _description = description ?? $"Modificar {_oldEntity.EntityType}";
+    }
+
+    public string Description => _description;
+
+    public void Execute()
+    {
+        var idx = _document.Entities.IndexOf(_oldEntity);
+        if (idx >= 0)
+        {
+            _document.Entities[idx] = _newEntity;
+        }
+    }
+
+    public void Undo()
+    {
+        var idx = _document.Entities.IndexOf(_newEntity);
+        if (idx >= 0)
+        {
+            _document.Entities[idx] = _oldEntity;
+        }
+    }
+}
+
+public sealed class ChangeEntityLayerAction : IUndoableAction
+{
+    private readonly ICadEntity _entity;
+    private readonly string _oldLayer;
+    private readonly string _newLayer;
+
+    public ChangeEntityLayerAction(ICadEntity entity, string newLayer)
+    {
+        _entity = entity ?? throw new ArgumentNullException(nameof(entity));
+        _oldLayer = entity.Layer;
+        _newLayer = newLayer ?? throw new ArgumentNullException(nameof(newLayer));
+    }
+
+    public string Description => $"Alterar camada de {_entity.EntityType} para {_newLayer}";
+
+    public void Execute() => _entity.Layer = _newLayer;
+    public void Undo() => _entity.Layer = _oldLayer;
+}
+
+public sealed class ChangeEntityColorAction : IUndoableAction
+{
+    private readonly ICadEntity _entity;
+    private readonly string _oldColor;
+    private readonly string _newColor;
+
+    public ChangeEntityColorAction(ICadEntity entity, string newColor)
+    {
+        _entity = entity ?? throw new ArgumentNullException(nameof(entity));
+        _oldColor = entity.ColorHex;
+        _newColor = newColor ?? throw new ArgumentNullException(nameof(newColor));
+    }
+
+    public string Description => $"Alterar cor de {_entity.EntityType}";
+
+    public void Execute() => _entity.ColorHex = _newColor;
+    public void Undo() => _entity.ColorHex = _oldColor;
 }
