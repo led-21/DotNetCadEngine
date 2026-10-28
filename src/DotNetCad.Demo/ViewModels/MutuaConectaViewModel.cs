@@ -32,9 +32,9 @@ public sealed class MutuaConectaViewModel : ObservableObject
     private bool _isBusy;
 
     // Linked Project PRJ-2026-001 info
-    private Guid _linkedProjectId = Guid.Parse("33333333-3333-3333-3333-333333333301");
+    private Guid _linkedProjectId = Guid.Parse("40000000-0000-0000-0000-000000000001");
     private string _linkedProjectCode = "PRJ-2026-001";
-    private string _linkedProjectTitle = "Unidade Agroindustrial de Beneficiamento de Grãos — Bonito/MS";
+    private string _linkedProjectTitle = "Unidade Agroindustrial de Beneficiamento e Armazenagem de Grãos — Bonito/MS";
     private Guid _electricalRequirementId = Guid.Parse("55555555-5555-5555-5555-555555555501");
 
     // Collaboration draft staged for human confirmation
