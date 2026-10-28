@@ -1,0 +1,188 @@
+<Window x:Class="DotNetCad.Demo.Views.SplashScreenView"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d"
+        Title="DotNetCadEngine — Inicializando"
+        Width="640" Height="360"
+        WindowStartupLocation="CenterScreen"
+        WindowStyle="None"
+        AllowsTransparency="True"
+        Background="Transparent"
+        ResizeMode="NoResize"
+        ShowInTaskbar="False"
+        UseLayoutRounding="True"
+        TextOptions.TextFormattingMode="Display"
+        TextOptions.TextRenderingMode="ClearType">
+
+    <Window.Resources>
+        <SolidColorBrush x:Key="BgDarkBrush" Color="#0F172A" />
+        <SolidColorBrush x:Key="SurfaceBrush" Color="#1E293B" />
+        <SolidColorBrush x:Key="BorderBrush" Color="#334155" />
+        <SolidColorBrush x:Key="CyanAccentBrush" Color="#38BDF8" />
+        <SolidColorBrush x:Key="TextPrimaryBrush" Color="#F8FAFC" />
+        <SolidColorBrush x:Key="TextMutedBrush" Color="#94A3B8" />
+        <SolidColorBrush x:Key="TextDimBrush" Color="#64748B" />
+
+        <Style x:Key="TechProgressBarStyle" TargetType="ProgressBar">
+            <Setter Property="Height" Value="4" />
+            <Setter Property="Background" Value="#1E293B" />
+            <Setter Property="Foreground" Value="#38BDF8" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ProgressBar">
+                        <Border Background="{TemplateBinding Background}" CornerRadius="2" ClipToBounds="True">
+                            <Grid x:Name="TemplateRoot">
+                                <Border x:Name="PART_Track" />
+                                <Border x:Name="PART_Indicator" Background="{TemplateBinding Foreground}" HorizontalAlignment="Left" CornerRadius="2" />
+                            </Grid>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
+
+    <!-- Outer card with subtle technical border and drop shadow -->
+    <Border Margin="16" Background="{StaticResource BgDarkBrush}" BorderBrush="{StaticResource BorderBrush}"
+            BorderThickness="1.5" CornerRadius="8">
+        <Border.Effect>
+            <DropShadowEffect Color="#000000" BlurRadius="24" Opacity="0.55" Direction="270" ShadowDepth="4" RenderingBias="Quality" />
+        </Border.Effect>
+
+        <Grid ClipToBounds="True">
+            <!-- Background Subtle Engineering Grid (Vector DrawingBrush) -->
+            <Grid.Background>
+                <DrawingBrush Viewport="0,0,24,24" ViewportUnits="Absolute" TileMode="Tile" Opacity="0.18">
+                    <DrawingBrush.Drawing>
+                        <DrawingGroup>
+                            <GeometryDrawing Geometry="M 0,0 L 24,0 24,24 0,24 Z">
+                                <GeometryDrawing.Brush>
+                                    <SolidColorBrush Color="#0F172A" />
+                                </GeometryDrawing.Brush>
+                            </GeometryDrawing>
+                            <GeometryDrawing Geometry="M 0,0 L 24,0 M 0,0 L 0,24">
+                                <GeometryDrawing.Pen>
+                                    <Pen Brush="#38BDF8" Thickness="0.5" />
+                                </GeometryDrawing.Pen>
+                            </GeometryDrawing>
+                            <GeometryDrawing Geometry="M 0,0 A 0.75,0.75 0 1 1 0.01,0">
+                                <GeometryDrawing.Brush>
+                                    <SolidColorBrush Color="#38BDF8" />
+                                </GeometryDrawing.Brush>
+                            </GeometryDrawing>
+                        </DrawingGroup>
+                    </DrawingBrush.Drawing>
+                </DrawingBrush>
+            </Grid.Background>
+
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="340" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+
+            <!-- LEFT PANEL: Brand, Identity & Startup Status -->
+            <DockPanel Grid.Column="0" Margin="28,24,16,20" LastChildFill="True">
+                <!-- Top Brand Header -->
+                <StackPanel DockPanel.Dock="Top">
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
+                        <Border Background="{StaticResource SurfaceBrush}" BorderBrush="{StaticResource BorderBrush}"
+                                BorderThickness="1" CornerRadius="4" Padding="6,2" Margin="0,0,8,0">
+                            <TextBlock Text="CAD 2D" Foreground="{StaticResource CyanAccentBrush}" FontSize="10" FontWeight="Bold" FontFamily="Segoe UI" />
+                        </Border>
+                        <Border Background="#1E3A8A" CornerRadius="4" Padding="6,2">
+                            <TextBlock Text="MOTOR VETORIAL" Foreground="#93C5FD" FontSize="9" FontWeight="SemiBold" FontFamily="Segoe UI" />
+                        </Border>
+                    </StackPanel>
+
+                    <!-- Application Title -->
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                        <TextBlock Text="DotNetCad" Foreground="{StaticResource CyanAccentBrush}" FontSize="26" FontWeight="Bold" FontFamily="Segoe UI" />
+                        <TextBlock Text="Engine" Foreground="{StaticResource TextPrimaryBrush}" FontSize="26" FontWeight="Bold" FontFamily="Segoe UI" Margin="4,0,0,0" />
+                    </StackPanel>
+
+                    <TextBlock Text="Geometria Vetorial, DXF &amp; Protocolo MCP"
+                               Foreground="{StaticResource TextMutedBrush}" FontSize="12" FontFamily="Segoe UI" Margin="0,0,0,4" />
+
+                    <!-- Version String -->
+                    <TextBlock x:Name="TxtVersion" Text="v1.0.0 (x64 Windows)"
+                               Foreground="{StaticResource TextDimBrush}" FontSize="11" FontFamily="Consolas" Margin="0,0,0,12" />
+                </StackPanel>
+
+                <!-- Bottom Status Indicator & Progress -->
+                <StackPanel DockPanel.Dock="Bottom" VerticalAlignment="Bottom">
+                    <DockPanel LastChildFill="True" Margin="0,0,0,6">
+                        <TextBlock x:Name="TxtStatus" Text="Inicializando subsistemas..."
+                                   Foreground="{StaticResource TextPrimaryBrush}" FontSize="11" FontFamily="Segoe UI" TextTrimming="CharacterEllipsis" />
+                    </DockPanel>
+
+                    <ProgressBar x:Name="StartupProgress" Style="{StaticResource TechProgressBarStyle}"
+                                 IsIndeterminate="True" Height="4" Margin="0,0,0,8" />
+
+                    <DockPanel LastChildFill="True">
+                        <TextBlock Text="Desenvolvido em C# / WPF (.NET 10)"
+                                   Foreground="{StaticResource TextDimBrush}" FontSize="9.5" FontFamily="Segoe UI" />
+                        <TextBlock Text="Local Offline" HorizontalAlignment="Right"
+                                   Foreground="{StaticResource TextDimBrush}" FontSize="9.5" FontFamily="Segoe UI" />
+                    </DockPanel>
+                </StackPanel>
+
+                <!-- Middle Description spacer -->
+                <Grid />
+            </DockPanel>
+
+            <!-- RIGHT PANEL: Discrete Geometric Technical CAD Drafting Layout -->
+            <Canvas Grid.Column="1" Margin="8,16,16,16" ClipToBounds="True" Opacity="0.85">
+                <!-- Coordinate Axes (X and Y with arrows) -->
+                <Path Stroke="{StaticResource BorderBrush}" StrokeThickness="1" StrokeDashArray="6 3"
+                      Data="M 30,280 L 240,280 M 50,300 L 50,30" />
+                <TextBlock Text="X" Foreground="{StaticResource TextDimBrush}" FontSize="10" FontFamily="Consolas" Canvas.Left="232" Canvas.Top="284" />
+                <TextBlock Text="Y" Foreground="{StaticResource TextDimBrush}" FontSize="10" FontFamily="Consolas" Canvas.Left="38" Canvas.Top="24" />
+
+                <!-- Construction CAD Arc -->
+                <Path Stroke="{StaticResource CyanAccentBrush}" StrokeThickness="1.5" StrokeDashArray="4 4" Opacity="0.5"
+                      Data="M 50,280 A 180,180 0 0,1 230,100" />
+
+                <!-- Technical Bracket Silhouette (Drafting entities) -->
+                <Path Stroke="{StaticResource CyanAccentBrush}" StrokeThickness="2" Fill="#1E293B" Opacity="0.7"
+                      Data="M 50,280 L 210,280 L 210,200 L 130,200 L 130,90 L 50,90 Z" />
+
+                <!-- Dimension Line with arrows and measurement text -->
+                <!-- Bottom Dimension: 10.000 m -->
+                <Line X1="50" Y1="300" X2="210" Y2="300" Stroke="{StaticResource CyanAccentBrush}" StrokeThickness="1" />
+                <Line X1="50" Y1="294" X2="50" Y2="306" Stroke="{StaticResource CyanAccentBrush}" StrokeThickness="1" />
+                <Line X1="210" Y1="294" X2="210" Y2="306" Stroke="{StaticResource CyanAccentBrush}" StrokeThickness="1" />
+                <!-- Left Arrow -->
+                <Path Fill="{StaticResource CyanAccentBrush}" Data="M 50,300 L 58,297 L 58,303 Z" />
+                <!-- Right Arrow -->
+                <Path Fill="{StaticResource CyanAccentBrush}" Data="M 210,300 L 202,297 L 202,303 Z" />
+                <Border Background="{StaticResource BgDarkBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1"
+                        Padding="4,1" Canvas.Left="106" Canvas.Top="292">
+                    <TextBlock Text="10.000 m" Foreground="{StaticResource CyanAccentBrush}" FontSize="9" FontFamily="Consolas" FontWeight="SemiBold" />
+                </Border>
+
+                <!-- Precision Snap Points -->
+                <!-- Snap 1: Origin Endpoint (Square) -->
+                <Rectangle Width="8" Height="8" Stroke="{StaticResource TextPrimaryBrush}" StrokeThickness="1.5" Canvas.Left="46" Canvas.Top="276" />
+                <!-- Snap 2: Vertex (Square) -->
+                <Rectangle Width="8" Height="8" Stroke="{StaticResource CyanAccentBrush}" StrokeThickness="1.5" Canvas.Left="206" Canvas.Top="276" />
+                <!-- Snap 3: Inner corner (Square) -->
+                <Rectangle Width="8" Height="8" Stroke="{StaticResource CyanAccentBrush}" StrokeThickness="1.5" Canvas.Left="126" Canvas.Top="196" />
+                <!-- Snap 4: Top Endpoint (Square) -->
+                <Rectangle Width="8" Height="8" Stroke="{StaticResource TextPrimaryBrush}" StrokeThickness="1.5" Canvas.Left="46" Canvas.Top="86" />
+
+                <!-- Intersection marker (Crosshair) -->
+                <Path Stroke="{StaticResource CyanAccentBrush}" StrokeThickness="1" Opacity="0.8"
+                      Data="M 125,90 L 135,90 M 130,85 L 130,95" />
+
+                <!-- Secondary Annotation label in technical style -->
+                <Border Background="{StaticResource SurfaceBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1"
+                        CornerRadius="2" Padding="4,2" Canvas.Left="140" Canvas.Top="50" Opacity="0.85">
+                    <TextBlock Text="DXF / SVG / R12" Foreground="{StaticResource TextMutedBrush}" FontSize="8.5" FontFamily="Consolas" />
+                </Border>
+            </Canvas>
+        </Grid>
+    </Border>
+</Window>

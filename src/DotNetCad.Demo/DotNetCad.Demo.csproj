@@ -9,7 +9,12 @@
     <AssemblyName>DotNetCad.Demo</AssemblyName>
     <RootNamespace>DotNetCad.Demo</RootNamespace>
     <LangVersion>latest</LangVersion>
+    <ApplicationIcon>Assets\dotnetcad.ico</ApplicationIcon>
   </PropertyGroup>
+
+  <ItemGroup>
+    <Resource Include="Assets\dotnetcad.ico" />
+  </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\DotNetCad.Core\DotNetCad.Core.csproj" />

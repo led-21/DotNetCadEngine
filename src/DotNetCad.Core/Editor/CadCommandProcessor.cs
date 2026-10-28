@@ -309,8 +309,6 @@ public static class CadCommandProcessor
             h.ExecuteAction(new CompositeUndoableAction(changes,"Mostrar todas as camadas"));return new(true,"Todas visíveis.",true,true);
         }
         if(p.Length==2) return CadLayerOperations.Execute(d,h,"ENSURE",p[1]);
-        if(p.Length==3 && p[1].Equals("SHOWALL",StringComparison.OrdinalIgnoreCase)) return new(false,"Use LAYER SHOWALL.");
-        if(p.Length==2 && p[1]=="SHOWALL") return new(false,"Use LAYER SHOW name.");
         if(p.Length>=3)
         {
             var op=p[1].ToUpperInvariant();
@@ -327,6 +325,7 @@ public static class CadCommandProcessor
                 var mode=p.Length>=4 ? p[3].ToUpperInvariant() : "CANCEL";
                 if(mode is not ("TRANSFER" or "ENTITIES" or "CANCEL"))return new(false,"Use TRANSFER destino, ENTITIES ou CANCEL.");
                 if(mode=="TRANSFER" && p.Length!=5)return new(false,"Informe destino.");
+                if(mode!="TRANSFER" && p.Length>4)return new(false,"Argumentos de exclusão inválidos.");
                 return CadLayerOperations.Execute(d,h,op,p[2],p.Length==5?p[4]:null,mode=="TRANSFER"?LayerDeleteMode.Transfer:mode=="ENTITIES"?LayerDeleteMode.DeleteEntities:LayerDeleteMode.Cancel);
             }
             if(p.Length==3 && op is "CREATE" or "ACTIVE" or "SHOW" or "HIDE" or "LOCK" or "UNLOCK" or "TRANSFER")return CadLayerOperations.Execute(d,h,op,p[2]);

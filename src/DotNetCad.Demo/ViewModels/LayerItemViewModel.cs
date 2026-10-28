@@ -16,7 +16,7 @@ public sealed class LayerItemViewModel : ObservableObject
     public string ColorHex { get=>_layer.ColorHex; set { _operate("COLOR",value,LayerDeleteMode.Cancel); OnPropertyChanged(); } }
     public bool IsVisible { get=>_layer.IsVisible; set { if(value!=IsVisible)_operate(value?"SHOW":"HIDE",null,LayerDeleteMode.Cancel); OnPropertyChanged(); } }
     public bool IsLocked { get=>_layer.IsLocked; set { if(value!=IsLocked)_operate(value?"LOCK":"UNLOCK",null,LayerDeleteMode.Cancel); OnPropertyChanged(); } }
-    public bool IsActive { get=>_isActive; set { if(value && !_isActive)_operate("ACTIVE",null,LayerDeleteMode.Cancel); } }
+    public bool IsActive { get=>_isActive; set { if(value && !_isActive)_operate("ACTIVE",null,LayerDeleteMode.Cancel); OnPropertyChanged(); } }
     public void SetActive(bool value)=>SetProperty(ref _isActive,value,nameof(IsActive));
     public ICommand ActivateCommand { get; }
     public ICommand RenameCommand { get; }
