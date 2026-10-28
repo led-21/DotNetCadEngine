@@ -164,3 +164,77 @@ public sealed class OffsetEntityAction : IUndoableAction
     public void Execute() => _document.AddEntity(_newEntity);
     public void Undo() => _document.RemoveEntity(_newEntity);
 }
+
+public sealed class ReplaceEntityAction : IUndoableAction
+{
+    private readonly CadDocument _document;
+    private readonly ICadEntity _oldEntity;
+    private readonly ICadEntity _newEntity;
+    private readonly string _description;
+
+    public ReplaceEntityAction(CadDocument document, ICadEntity oldEntity, ICadEntity newEntity, string? description = null)
+    {
+        _document = document ?? throw new ArgumentNullException(nameof(document));
+        _oldEntity = oldEntity ?? throw new ArgumentNullException(nameof(oldEntity));
+        _newEntity = newEntity ?? throw new ArgumentNullException(nameof(newEntity));
+        _description = description ?? $"Modificar {_oldEntity.EntityType}";
+    }
+
+    public string Description => _description;
+
+    public void Execute()
+    {
+        var idx = _document.Entities.IndexOf(_oldEntity);
+        if (idx >= 0)
+        {
+            _document.Entities[idx] = _newEntity;
+        }
+    }
+
+    public void Undo()
+    {
+        var idx = _document.Entities.IndexOf(_newEntity);
+        if (idx >= 0)
+        {
+            _document.Entities[idx] = _oldEntity;
+        }
+    }
+}
+
+public sealed class ChangeEntityLayerAction : IUndoableAction
+{
+    private readonly ICadEntity _entity;
+    private readonly string _oldLayer;
+    private readonly string _newLayer;
+
+    public ChangeEntityLayerAction(ICadEntity entity, string newLayer)
+    {
+        _entity = entity ?? throw new ArgumentNullException(nameof(entity));
+        _oldLayer = entity.Layer;
+        _newLayer = newLayer ?? throw new ArgumentNullException(nameof(newLayer));
+    }
+
+    public string Description => $"Alterar camada de {_entity.EntityType} para {_newLayer}";
+
+    public void Execute() => _entity.Layer = _newLayer;
+    public void Undo() => _entity.Layer = _oldLayer;
+}
+
+public sealed class ChangeEntityColorAction : IUndoableAction
+{
+    private readonly ICadEntity _entity;
+    private readonly string _oldColor;
+    private readonly string _newColor;
+
+    public ChangeEntityColorAction(ICadEntity entity, string newColor)
+    {
+        _entity = entity ?? throw new ArgumentNullException(nameof(entity));
+        _oldColor = entity.ColorHex;
+        _newColor = newColor ?? throw new ArgumentNullException(nameof(newColor));
+    }
+
+    public string Description => $"Alterar cor de {_entity.EntityType}";
+
+    public void Execute() => _entity.ColorHex = _newColor;
+    public void Undo() => _entity.ColorHex = _oldColor;
+}

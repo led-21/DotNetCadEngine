@@ -1,213 +1,377 @@
-<Window x:Class="DotNetCad.Demo.MainWindow"
-        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        xmlns:vm="clr-namespace:DotNetCad.Demo.ViewModels"
-        xmlns:controls="clr-namespace:DotNetCad.Demo.Controls"
-        mc:Ignorable="d"
-        Title="DotNetCadEngine — Editor CAD 2D"
-        Height="720" Width="1100" MinWidth="640" MinHeight="480"
-        UseLayoutRounding="True"
-        WindowStartupLocation="CenterScreen"
-        Background="#0F172A">
-
-    <Window.Resources>
-        <Geometry x:Key="NewIcon">M 5,2 L 15,2 L 20,7 L 20,22 L 5,22 Z M 15,2 L 15,7 L 20,7</Geometry>
-        <Geometry x:Key="OpenIcon">M 3,8 L 3,5 L 10,5 L 12,8 L 21,8 L 19,20 L 3,20 L 5,11 L 22,11</Geometry>
-        <Geometry x:Key="SaveIcon">M 4,3 L 17,3 L 21,7 L 21,21 L 4,21 Z M 7,3 L 7,10 L 17,10 L 17,3 M 8,21 L 8,14 L 17,14 L 17,21</Geometry>
-        <Geometry x:Key="ImportIcon">M 4,4 L 4,20 L 20,20 L 20,15 M 12,3 L 12,15 M 8,11 L 12,15 L 16,11</Geometry>
-        <Geometry x:Key="ExportIcon">M 4,9 L 4,20 L 20,20 L 20,9 M 12,16 L 12,3 M 8,7 L 12,3 L 16,7</Geometry>
-        <Geometry x:Key="SampleIcon">M 3,5 L 21,5 L 21,19 L 3,19 Z M 8,12 A 2,2 0 1 1 7.99,12 M 16,12 A 2,2 0 1 1 15.99,12 M 5,12 L 19,12</Geometry>
-        <Geometry x:Key="UndoIcon">M 9,7 L 4,12 L 9,17 M 4,12 L 15,12 A 5,5 0 0 1 15,22</Geometry>
-        <Geometry x:Key="RedoIcon">M 15,7 L 20,12 L 15,17 M 20,12 L 9,12 A 5,5 0 0 0 9,22</Geometry>
-        <Geometry x:Key="ZoomExtentsIcon">M 3,8 L 3,3 L 8,3 M 16,3 L 21,3 L 21,8 M 21,16 L 21,21 L 16,21 M 8,21 L 3,21 L 3,16 M 10,10 A 3,3 0 1 1 9.99,10 M 12,12 L 16,16</Geometry>
-        <Geometry x:Key="ResetViewIcon">M 12,2 L 12,6 M 12,18 L 12,22 M 2,12 L 6,12 M 18,12 L 22,12 M 12,7 A 5,5 0 1 1 11.99,7</Geometry>
-        <Geometry x:Key="DeleteIcon">M 4,7 L 20,7 M 10,11 L 10,17 M 14,11 L 14,17 M 6,7 L 7,20 L 17,20 L 18,7 M 9,7 L 9,4 L 15,4 L 15,7</Geometry>
-        <Geometry x:Key="ClearIcon">M 4,4 L 20,20 M 20,4 L 4,20</Geometry>
-    </Window.Resources>
-
-    <Window.DataContext>
-        <vm:MainViewModel />
-    </Window.DataContext>
-
-    <DockPanel LastChildFill="True">
-        <!-- Top Application Bar -->
-        <Border DockPanel.Dock="Top" Background="#1E293B" BorderBrush="#334155" BorderThickness="0,0,0,1" Padding="8,6">
-            <DockPanel LastChildFill="True">
-                <!-- Branding / Title -->
-                <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" VerticalAlignment="Center" Margin="4,0,16,6">
-                    <TextBlock Text="DotNetCad" Foreground="#38BDF8" FontWeight="Bold" FontSize="15" />
-                    <TextBlock Text="Engine" Foreground="#F8FAFC" FontWeight="Bold" FontSize="15" />
-                    <Border Background="#334155" CornerRadius="3" Padding="4,1" Margin="8,0,0,0" VerticalAlignment="Center">
-                        <TextBlock Text="CAD 2D" Foreground="#94A3B8" FontSize="10" FontWeight="SemiBold" />
-                    </Border>
-                </StackPanel>
-
-                <!-- Actions -->
-                <WrapPanel x:Name="ActionsHost" Orientation="Horizontal">
-                    <StackPanel MaxWidth="{Binding ActualWidth, ElementName=ActionsHost}"><TextBlock Text="Arquivo" Foreground="#94A3B8"/><WrapPanel>
-                    <Button Style="{StaticResource CadToolbarButtonStyle}" Tag="{StaticResource NewIcon}" Content="Novo" ToolTip="Iniciar outro documento; oferece salvar alterações pendentes" Command="{Binding NewDrawingCommand}" Margin="2,2" />
-                    <Button Style="{StaticResource CadToolbarButtonStyle}" Tag="{StaticResource OpenIcon}" Content="Abrir" ToolTip="Abrir desenho CAD ou DXF" Command="{Binding OpenDrawingCommand}" Margin="2,2" />
-                    <Button Style="{StaticResource CadToolbarButtonStyle}" Tag="{StaticResource SaveIcon}" Content="Salvar" ToolTip="Salvar desenho CAD" Command="{Binding SaveDrawingCommand}" Margin="2,2" />
-                    <Separator Background="#334155" Margin="6,2" />
-                    <Button Style="{StaticResource CadToolbarButtonStyle}" Tag="{StaticResource ImportIcon}" Content="Abrir DXF" ToolTip="Abrir DXF substituindo o desenho atual" Command="{Binding ImportDxfCommand}" Margin="2,2" />
-                    <Button Style="{StaticResource CadToolbarButtonStyle}" Tag="{StaticResource ExportIcon}" Content="Exportar DXF" ToolTip="Exportar desenho para DXF" Command="{Binding ExportDxfCommand}" Margin="2,2" />
-                    <Button Style="{StaticResource CadToolbarButtonStyle}" Tag="{StaticResource ExportIcon}" Content="Exportar SVG" ToolTip="Exportar desenho para SVG" Command="{Binding ExportSvgCommand}" Margin="2,2" />
-                    <Separator Background="#334155" Margin="6,2" />
-                    <Button Style="{StaticResource CadToolbarButtonStyle}" Tag="{StaticResource SampleIcon}" Content="Exemplo" Command="{Binding LoadSampleDrawingCommand}" ToolTip="Carregar desenho de exemplo" Margin="2,2" />
-                    <Separator Background="#334155" Margin="6,2" />
-                    </WrapPanel></StackPanel>
-                    <StackPanel MaxWidth="{Binding ActualWidth, ElementName=ActionsHost}"><TextBlock Text="Editar" Foreground="#94A3B8"/><WrapPanel>
-                    <Button Style="{StaticResource CadToolbarButtonStyle}" Tag="{StaticResource UndoIcon}" Content="Desfazer" Command="{Binding UndoCommand}" ToolTip="Desfazer (Ctrl+Z)" Margin="2,2" />
-                    <Button Style="{StaticResource CadToolbarButtonStyle}" Tag="{StaticResource RedoIcon}" Content="Refazer" Command="{Binding RedoCommand}" ToolTip="Refazer (Ctrl+Y)" Margin="2,2" />
-                    <Separator Background="#334155" Margin="6,2" />
-                    <Button Style="{StaticResource CadToolbarButtonStyle}" Tag="{StaticResource DeleteIcon}" Content="Excluir seleção" Command="{Binding DeleteSelectedCommand}" ToolTip="Excluir entidades selecionadas (Del)" Margin="2,2" />
-                    </WrapPanel></StackPanel>
-                    <StackPanel MaxWidth="{Binding ActualWidth, ElementName=ActionsHost}"><TextBlock Text="Exibir" Foreground="#94A3B8"/><WrapPanel>
-                    <Button Style="{StaticResource CadToolbarButtonStyle}" Tag="{StaticResource ZoomExtentsIcon}" Content="Enquadrar" Command="{Binding ZoomExtentsCommand}" ToolTip="Ajustar zoom para as entidades visíveis" Margin="2,2" />
-                    <Button Style="{StaticResource CadToolbarButtonStyle}" Tag="{StaticResource ResetViewIcon}" Content="Vista inicial" Command="{Binding ResetViewCommand}" ToolTip="Redefinir centro e zoom inicial" Margin="2,2" />
-                    <Separator Background="#334155" Margin="6,2" />
-                    </WrapPanel></StackPanel>
-                </WrapPanel>
-            </DockPanel>
-        </Border>
-
-        <!-- Bottom Technical Status Bar -->
-        <Border DockPanel.Dock="Bottom" Background="#1E293B" BorderBrush="#334155" BorderThickness="0,1,0,0" Padding="8,4">
-            <WrapPanel>
-                <StackPanel Orientation="Horizontal"  VerticalAlignment="Center" Margin="0,2">
-                    <TextBlock Text="X: " Foreground="#94A3B8" FontFamily="Consolas" FontSize="11" />
-                    <TextBlock Text="{Binding MouseWorldX, StringFormat={}{0:F3} m}" Foreground="#F8FAFC" FontFamily="Consolas" FontSize="11" Width="75" />
-                    <TextBlock Text="Y: " Foreground="#94A3B8" FontFamily="Consolas" FontSize="11" Margin="6,0,0,0" />
-                    <TextBlock Text="{Binding MouseWorldY, StringFormat={}{0:F3} m}" Foreground="#F8FAFC" FontFamily="Consolas" FontSize="11" Width="75" />
-                    <Separator Background="#334155" Margin="8,2" />
-                    <TextBlock Text="Ferramenta: " Foreground="#94A3B8" FontSize="11" FontWeight="SemiBold" />
-                    <TextBlock Text="{Binding ActiveToolLabel}" Foreground="#38BDF8" FontSize="11" FontWeight="Bold" Margin="0,0,12,0" />
-                    <Separator Background="#334155" Margin="8,2" />
-                    <TextBlock Text="Seleção: " Foreground="#94A3B8" FontSize="11" FontWeight="SemiBold" />
-                    <TextBlock Text="{Binding SelectedCount, StringFormat={}{0} item(s)}" Foreground="#F8FAFC" FontSize="11" Margin="0,0,12,0" />
-                </StackPanel>
-
-                <StackPanel Orientation="Horizontal"  VerticalAlignment="Center" Margin="0,2">
-                    <Border Background="#0F172A" BorderBrush="#334155" BorderThickness="1" CornerRadius="3" Padding="6,2" Margin="3,0">
-                        <TextBlock Text="{Binding OrthoLabel, StringFormat={}Ortogonal (F8): {0}}"
-                                   Foreground="#38BDF8" FontSize="10" FontWeight="SemiBold" />
-                    </Border>
-                    <Border Background="#0F172A" BorderBrush="#334155" BorderThickness="1" CornerRadius="3" Padding="6,2" Margin="3,0">
-                        <TextBlock Text="{Binding PolarLabel, StringFormat={}Polar (F10): {0}}"
-                                   Foreground="#38BDF8" FontSize="10" FontWeight="SemiBold" />
-                    </Border>
-                    <Border Background="#0F172A" BorderBrush="#334155" BorderThickness="1" CornerRadius="3" Padding="6,2" Margin="3,0">
-                        <TextBlock Text="{Binding OsnapLabel, StringFormat={}Captura (F3): {0}}"
-                                   Foreground="#EAB308" FontSize="10" FontWeight="SemiBold" />
-                    </Border>
-                    <Separator Background="#334155" Margin="6,2" />
-                    <TextBlock Text="{Binding ZoomLevel, StringFormat={}Zoom: {0:F1}x}" Foreground="#94A3B8" FontSize="11" VerticalAlignment="Center" Margin="4,0" />
-                </StackPanel>
-            </WrapPanel>
-        </Border>
-
-        <TextBlock DockPanel.Dock="Bottom" Text="{Binding ElementName=Viewport, Path=CommandStatus}" TextWrapping="Wrap" Foreground="#F8FAFC" Background="#172033" Padding="8,3" />
-        <Grid x:Name="WorkspaceGrid">
-            <Grid.RowDefinitions>
-                <RowDefinition Height="*" MinHeight="80"/>
-                <RowDefinition Height="5"/>
-                <RowDefinition x:Name="ConsoleRow" Height="180" MinHeight="76"/>
-            </Grid.RowDefinitions>
-            <DockPanel Grid.Row="0">
-        <!-- Left Tool Rail -->
-        <Border DockPanel.Dock="Left" Background="#1E293B" BorderBrush="#334155" BorderThickness="0,0,1,0" Width="70">
-            <controls:CadToolRail />
-        </Border>
-
-        <!-- Right Layers Inspector -->
-        <Border DockPanel.Dock="Right" Background="#1E293B" BorderBrush="#334155" BorderThickness="0">
-            <Expander x:Name="InspectorExpander" ExpandDirection="Left" IsExpanded="True" Foreground="#CBD5E1"
-                      ToolTip="Expandir ou recolher camadas">
-                <Expander.Header>
-                    <TextBlock Text="Camadas" Margin="2,6" FontWeight="SemiBold">
-                        <TextBlock.LayoutTransform><RotateTransform Angle="-90" /></TextBlock.LayoutTransform>
-                    </TextBlock>
-                </Expander.Header>
-            <DockPanel x:Name="InspectorPanel" Margin="6" Width="180" MinWidth="130">
-                <Thumb DockPanel.Dock="Left" Width="6" Cursor="SizeWE" Background="Transparent" DragDelta="ResizeInspector" ToolTip="Arraste para ajustar a largura das camadas" Focusable="True" KeyDown="ResizeInspectorKey">
-                    <Thumb.Template><ControlTemplate TargetType="Thumb"><Grid Background="Transparent"><Border Width="1" HorizontalAlignment="Center" Background="#475569"/></Grid></ControlTemplate></Thumb.Template>
-                </Thumb>
-                <DockPanel DockPanel.Dock="Top" Margin="4,4,4,8">
-                    <Button DockPanel.Dock="Right" Style="{StaticResource CadToolbarButtonStyle}" Content="👁 Todas" Command="{Binding ShowAllLayersCommand}" ToolTip="Tornar todas as camadas visíveis" Margin="4,0,0,0" Padding="6,2" FontSize="10" />
-                    <TextBlock Text="CAMADAS" Foreground="#94A3B8" FontSize="11" FontWeight="Bold" VerticalAlignment="Center" />
-                </DockPanel>
-                
-                <DockPanel DockPanel.Dock="Top" Margin="2,0,2,8">
-                    <Button DockPanel.Dock="Right" Style="{StaticResource CadButtonStyle}" Content="+" Command="{Binding AddLayerCommand}" ToolTip="Criar nova camada" Width="26" Height="24" Margin="4,0,0,0" Padding="0" />
-                    <TextBox Text="{Binding NewLayerInput, UpdateSourceTrigger=PropertyChanged}" Background="#0F172A" Foreground="#F8FAFC"
-                             BorderBrush="#475569" BorderThickness="1" Padding="4,2" FontSize="11"
-                             ToolTip="Nome da nova camada. Pressione Enter ou clique em +">
-                        <TextBox.InputBindings>
-                            <KeyBinding Key="Return" Command="{Binding AddLayerCommand}" />
-                        </TextBox.InputBindings>
-                    </TextBox>
-                </DockPanel>
-                <TextBox DockPanel.Dock="Top" Text="{Binding LayerFilter, UpdateSourceTrigger=PropertyChanged}" ToolTip="Filtrar camadas por nome" Background="#0F172A" Foreground="#F8FAFC" Margin="2,0,2,6" Padding="4" />
-                <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-                <ListBox ItemsSource="{Binding FilteredLayers}" SelectedItem="{Binding SelectedLayer, Mode=TwoWay}" Background="Transparent" BorderThickness="0" ScrollViewer.HorizontalScrollBarVisibility="Disabled" HorizontalContentAlignment="Stretch">
-                    <ListBox.ItemContainerStyle><Style TargetType="ListBoxItem"><Setter Property="Padding" Value="0"/><Setter Property="HorizontalContentAlignment" Value="Stretch"/></Style></ListBox.ItemContainerStyle>
-                    <ListBox.ItemTemplate>
-                        <DataTemplate>
-                            <Border Background="#0F172A" BorderBrush="#334155" BorderThickness="1" CornerRadius="3" Padding="6,4" Margin="2,3">
-                                <Border.ContextMenu>
-                                    <ContextMenu>
-                                        <MenuItem Header="Ativar para desenho" Command="{Binding ActivateCommand}" />
-                                        <MenuItem Header="Renomear…" Command="{Binding RenameCommand}" />
-                                        <MenuItem Header="Bloquear / desbloquear" Command="{Binding LockCommand}" />
-                                        <MenuItem Header="Transferir seleção para esta camada" Command="{Binding TransferCommand}" />
-                                        <Separator/>
-                                        <MenuItem Header="Excluir camada…" Command="{Binding DeleteCommand}" />
-                                    </ContextMenu>
-                                </Border.ContextMenu>
-                                <StackPanel>
-                                <DockPanel LastChildFill="True">
-                                    <CheckBox IsChecked="{Binding IsVisible, Mode=TwoWay}" ToolTip="Mostrar ou ocultar camada" VerticalAlignment="Center" Margin="0,0,6,0" />
-                                    <RadioButton IsChecked="{Binding IsActive, Mode=TwoWay}" GroupName="ActiveLayer" ToolTip="Camada ativa para novas entidades; independente da linha selecionada" VerticalAlignment="Center" Margin="0,0,6,0" />
-                                    <Border Width="12" Height="12" CornerRadius="2" Margin="0,0,6,0" VerticalAlignment="Center"
-                                            Background="{Binding ColorHex}" BorderBrush="#94A3B8" BorderThickness="1" />
-                                    <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis" ToolTip="{Binding Name}" Foreground="#F8FAFC" FontSize="11" VerticalAlignment="Center" />
-                                </DockPanel>
-                                <TextBlock Text="{Binding Details}" Foreground="#94A3B8" FontSize="10" TextTrimming="CharacterEllipsis" ToolTip="{Binding Details}" />
-                                <DockPanel Margin="0,3,0,0">
-                                    <CheckBox DockPanel.Dock="Left" Content="Bloquear" Foreground="#CBD5E1" IsChecked="{Binding IsLocked, Mode=TwoWay}" ToolTip="Bloqueio impede editar; permite inspecionar e capturar pontos" />
-                                </DockPanel>
-                                <TextBox Text="{Binding ColorHex, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" ToolTip="Cor explícita da camada em #RRGGBB; não altera cores explícitas das entidades" Background="#172033" Foreground="#F8FAFC" BorderBrush="#475569" Padding="2" />
-                                </StackPanel>
-                            </Border>
-                        </DataTemplate>
-                    </ListBox.ItemTemplate>
-                </ListBox>
-                </ScrollViewer>
-            </DockPanel>
-            </Expander>
-        </Border>
-
-        <!-- Main CAD Viewport -->
-        <controls:CadViewport x:Name="Viewport"
-                              Document="{Binding Document}"
-                              LayerRevision="{Binding LayerRevision}"
-                              DrawingRevision="{Binding DrawingRevision}"
-                              ActiveTool="{Binding ActiveTool, Mode=TwoWay}"
-                              UndoManager="{Binding UndoManager}"
-                              ToggleOrthoCommand="{Binding ToggleOrthoCommand}"
-                              TogglePolarCommand="{Binding TogglePolarCommand}"
-                              ToggleOsnapCommand="{Binding ToggleOsnapCommand}"
-                              MouseWorldX="{Binding MouseWorldX, Mode=TwoWay}"
-                              MouseWorldY="{Binding MouseWorldY, Mode=TwoWay}"
-                              ZoomLevel="{Binding ZoomLevel, Mode=TwoWay}"
-                              SelectedCount="{Binding SelectedCount, Mode=TwoWay}" />
-            </DockPanel>
-            <GridSplitter x:Name="ConsoleDivider" Grid.Row="1" Height="5" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" ResizeDirection="Rows" ResizeBehavior="PreviousAndNext" ShowsPreview="True" DragCompleted="ConsoleResized" KeyUp="ConsoleResizeKey" KeyboardIncrement="10" ToolTip="Arraste ou use ↑/↓ para ajustar o console">
-                <GridSplitter.Template><ControlTemplate TargetType="GridSplitter"><Grid Background="Transparent"><Border Height="1" VerticalAlignment="Center" Background="#475569"/></Grid></ControlTemplate></GridSplitter.Template>
-            </GridSplitter>
-            <controls:CadConsole x:Name="ConsoleView" Grid.Row="2" ExpandedChanged="ConsoleExpandedChanged" ResetSizeRequested="ResetConsoleSize"/>
-        </Grid>
-    </DockPanel>
-</Window>
+<Window x:Class="DotNetCad.Demo.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:vm="clr-namespace:DotNetCad.Demo.ViewModels"
+        xmlns:controls="clr-namespace:DotNetCad.Demo.Controls"
+        mc:Ignorable="d"
+        Title="{Binding WindowTitle}"
+        Height="720" Width="1100" MinWidth="640" MinHeight="480"
+        UseLayoutRounding="True"
+        WindowStartupLocation="CenterScreen"
+        Background="#0F172A">
+
+    <Window.Resources>
+        <Geometry x:Key="NewIcon">M 5,2 L 15,2 L 20,7 L 20,22 L 5,22 Z M 15,2 L 15,7 L 20,7</Geometry>
+        <Geometry x:Key="OpenIcon">M 3,8 L 3,5 L 10,5 L 12,8 L 21,8 L 19,20 L 3,20 L 5,11 L 22,11</Geometry>
+        <Geometry x:Key="SaveIcon">M 4,3 L 17,3 L 21,7 L 21,21 L 4,21 Z M 7,3 L 7,10 L 17,10 L 17,3 M 8,21 L 8,14 L 17,14 L 17,21</Geometry>
+        <Geometry x:Key="ImportIcon">M 4,4 L 4,20 L 20,20 L 20,15 M 12,3 L 12,15 M 8,11 L 12,15 L 16,11</Geometry>
+        <Geometry x:Key="ExportIcon">M 4,9 L 4,20 L 20,20 L 20,9 M 12,16 L 12,3 M 8,7 L 12,3 L 16,7</Geometry>
+        <Geometry x:Key="SampleIcon">M 3,5 L 21,5 L 21,19 L 3,19 Z M 8,12 A 2,2 0 1 1 7.99,12 M 16,12 A 2,2 0 1 1 15.99,12 M 5,12 L 19,12</Geometry>
+        <Geometry x:Key="UndoIcon">M 9,7 L 4,12 L 9,17 M 4,12 L 15,12 A 5,5 0 0 1 15,22</Geometry>
+        <Geometry x:Key="RedoIcon">M 15,7 L 20,12 L 15,17 M 20,12 L 9,12 A 5,5 0 0 0 9,22</Geometry>
+        <Geometry x:Key="ZoomExtentsIcon">M 3,8 L 3,3 L 8,3 M 16,3 L 21,3 L 21,8 M 21,16 L 21,21 L 16,21 M 8,21 L 3,21 L 3,16 M 10,10 A 3,3 0 1 1 9.99,10 M 12,12 L 16,16</Geometry>
+        <Geometry x:Key="ResetViewIcon">M 12,2 L 12,6 M 12,18 L 12,22 M 2,12 L 6,12 M 18,12 L 22,12 M 12,7 A 5,5 0 1 1 11.99,7</Geometry>
+        <Geometry x:Key="DeleteIcon">M 4,7 L 20,7 M 10,11 L 10,17 M 14,11 L 14,17 M 6,7 L 7,20 L 17,20 L 18,7 M 9,7 L 9,4 L 15,4 L 15,7</Geometry>
+        <Geometry x:Key="ClearIcon">M 4,4 L 20,20 M 20,4 L 4,20</Geometry>
+    </Window.Resources>
+
+    <Window.InputBindings>
+        <KeyBinding Key="F2" Command="{Binding ToggleConsoleCommand}" />
+        <KeyBinding Key="D0" Modifiers="Control" Command="{Binding ZoomExtentsCommand}" />
+        <KeyBinding Key="N" Modifiers="Control" Command="{Binding NewDrawingCommand}" />
+        <KeyBinding Key="O" Modifiers="Control" Command="{Binding OpenDrawingCommand}" />
+        <KeyBinding Key="S" Modifiers="Control" Command="{Binding SaveDrawingCommand}" />
+        <KeyBinding Key="S" Modifiers="Control+Shift" Command="{Binding SaveAsDrawingCommand}" />
+    </Window.InputBindings>
+
+    <Window.DataContext>
+        <vm:MainViewModel />
+    </Window.DataContext>
+
+    <DockPanel LastChildFill="True">
+        <!-- Main Application Menu Bar -->
+        <Menu DockPanel.Dock="Top">
+            <!-- 1. ARQUIVO -->
+            <MenuItem Header="_Arquivo">
+                <MenuItem Header="_Novo" Command="{Binding NewDrawingCommand}" InputGestureText="Ctrl+N" />
+                <MenuItem Header="_Abrir…" Command="{Binding OpenDrawingCommand}" InputGestureText="Ctrl+O" />
+                <MenuItem Header="Arquivos _Recentes" ItemsSource="{Binding RecentFiles}">
+                    <MenuItem.ItemContainerStyle>
+                        <Style TargetType="MenuItem" BasedOn="{StaticResource {x:Type MenuItem}}">
+                            <Setter Property="Header" Value="{Binding}" />
+                            <Setter Property="Command" Value="{Binding DataContext.OpenRecentFileCommand, RelativeSource={RelativeSource AncestorType=Menu}}" />
+                            <Setter Property="CommandParameter" Value="{Binding}" />
+                        </Style>
+                    </MenuItem.ItemContainerStyle>
+                </MenuItem>
+                <Separator />
+                <MenuItem Header="_Salvar" Command="{Binding SaveDrawingCommand}" InputGestureText="Ctrl+S" />
+                <MenuItem Header="Salvar _Como…" Command="{Binding SaveAsDrawingCommand}" InputGestureText="Ctrl+Shift+S" />
+                <Separator />
+                <MenuItem Header="_Importar DXF…" Command="{Binding ImportDxfCommand}" />
+                <MenuItem Header="_Exportar DXF…" Command="{Binding ExportDxfCommand}" />
+                <MenuItem Header="Exportar _SVG…" Command="{Binding ExportSvgCommand}" />
+                <Separator />
+                <MenuItem Header="Desenho de _Exemplo" Command="{Binding LoadSampleDrawingCommand}" />
+                <Separator />
+                <MenuItem Header="Sai_r" Click="ExitApplication_Click" InputGestureText="Alt+F4" />
+            </MenuItem>
+
+            <!-- 2. EDITAR -->
+            <MenuItem Header="_Editar">
+                <MenuItem Header="_Desfazer" Command="{Binding UndoCommand}" InputGestureText="Ctrl+Z" />
+                <MenuItem Header="_Refazer" Command="{Binding RedoCommand}" InputGestureText="Ctrl+Y" />
+                <Separator />
+                <MenuItem Header="Selecionar _Tudo" Command="{Binding SelectAllCommand}" InputGestureText="Ctrl+A" />
+                <MenuItem Header="_Limpar Seleção" Command="{Binding ClearSelectionCommand}" InputGestureText="Esc" />
+                <MenuItem Header="_Inverter Seleção" Command="{Binding InvertSelectionCommand}" />
+                <MenuItem Header="Selecionar _Camada Ativa" Command="{Binding SelectActiveLayerCommand}" />
+                <Separator />
+                <MenuItem Header="_Excluir Seleção" Command="{Binding DeleteSelectedCommand}" InputGestureText="Del" />
+            </MenuItem>
+
+            <!-- 3. EXIBIR (VIEW) - PRINCIPAL OPÇÃO SOLICITADA -->
+            <MenuItem Header="E_xibir">
+                <MenuItem Header="_Console de Comandos"
+                          Command="{Binding ToggleConsoleCommand}"
+                          IsCheckable="True"
+                          IsChecked="{Binding IsConsoleVisible, Mode=OneWay}"
+                          InputGestureText="F2" />
+                <MenuItem Header="_Painel Lateral (Propriedades / Camadas)"
+                          IsCheckable="True"
+                          IsChecked="{Binding ElementName=InspectorExpander, Path=IsExpanded, Mode=TwoWay}"
+                          InputGestureText="Ctrl+1" />
+                <Separator />
+                <MenuItem Header="_Enquadrar Tudo (Extents)" Command="{Binding ZoomExtentsCommand}" InputGestureText="Ctrl+0" />
+                <MenuItem Header="_Vista Inicial" Command="{Binding ResetViewCommand}" InputGestureText="Home" />
+                <Separator />
+                <MenuItem Header="Modo _Ortogonal" Command="{Binding ToggleOrthoCommand}" IsCheckable="True" IsChecked="{Binding IsOrthoEnabled, Mode=OneWay}" InputGestureText="F8" />
+                <MenuItem Header="Rastreamento _Polar" Command="{Binding TogglePolarCommand}" IsCheckable="True" IsChecked="{Binding IsPolarEnabled, Mode=OneWay}" InputGestureText="F10" />
+                <MenuItem Header="_Captura de Objetos (Osnap)" Command="{Binding ToggleOsnapCommand}" IsCheckable="True" IsChecked="{Binding IsOsnapEnabled, Mode=OneWay}" InputGestureText="F3" />
+            </MenuItem>
+
+            <!-- 4. DESENHAR (DRAW) -->
+            <MenuItem Header="_Desenhar">
+                <MenuItem Header="_Linha" Command="{Binding SetToolCommand}" CommandParameter="Line" InputGestureText="L" />
+                <MenuItem Header="_Retângulo" Command="{Binding SetToolCommand}" CommandParameter="Rectangle" InputGestureText="REC" />
+                <MenuItem Header="_Círculo" Command="{Binding SetToolCommand}" CommandParameter="Circle" InputGestureText="C" />
+                <MenuItem Header="_Arco" Command="{Binding SetToolCommand}" CommandParameter="Arc" InputGestureText="A" />
+                <MenuItem Header="_Polilinha" Command="{Binding SetToolCommand}" CommandParameter="Polyline" InputGestureText="PL" />
+                <Separator />
+                <MenuItem Header="_Texto" Command="{Binding AddTextPromptCommand}" InputGestureText="T" />
+                <MenuItem Header="Cota _Linear" Command="{Binding SetToolCommand}" CommandParameter="Dimension" InputGestureText="DLI" />
+            </MenuItem>
+
+            <!-- 5. MODIFICAR (MODIFY) -->
+            <MenuItem Header="_Modificar">
+                <MenuItem Header="_Mover" Command="{Binding MoveSelectedCommand}" InputGestureText="M" />
+                <MenuItem Header="_Copiar" Command="{Binding CopySelectedCommand}" InputGestureText="CP" />
+                <MenuItem Header="_Rotacionar" Command="{Binding RotateSelectedCommand}" InputGestureText="RO" />
+                <MenuItem Header="_Espelhar" Command="{Binding MirrorSelectedCommand}" InputGestureText="MI" />
+                <MenuItem Header="_Offset (Deslocamento)" Command="{Binding OffsetSelectedCommand}" InputGestureText="O" />
+                <Separator />
+                <MenuItem Header="_Aparar (Trim)" Command="{Binding TrimSelectedCommand}" InputGestureText="TR" />
+                <MenuItem Header="_Estender (Extend)" Command="{Binding ExtendSelectedCommand}" InputGestureText="EX" />
+                <MenuItem Header="_Quebrar (Break)" Command="{Binding BreakSelectedCommand}" InputGestureText="BR" />
+            </MenuItem>
+
+            <!-- 6. AJUDA (HELP) -->
+            <MenuItem Header="A_juda">
+                <MenuItem Header="_Atalhos de Teclado…" Click="ShowShortcutsHelp_Click" />
+                <MenuItem Header="_Comandos do Console…" Click="ShowConsoleHelp_Click" />
+                <Separator />
+                <MenuItem Header="_Sobre o DotNetCadEngine…" Click="ShowAbout_Click" />
+            </MenuItem>
+        </Menu>
+
+        <!-- Top Application Bar -->
+        <Border DockPanel.Dock="Top" Background="#1E293B" BorderBrush="#334155" BorderThickness="0,0,0,1" Padding="8,6">
+            <DockPanel LastChildFill="True">
+                <!-- Branding / Title -->
+                <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" VerticalAlignment="Center" Margin="4,0,16,6">
+                    <TextBlock Text="DotNetCad" Foreground="#38BDF8" FontWeight="Bold" FontSize="15" />
+                    <TextBlock Text="Engine" Foreground="#F8FAFC" FontWeight="Bold" FontSize="15" />
+                    <Border Background="#334155" CornerRadius="3" Padding="4,1" Margin="8,0,0,0" VerticalAlignment="Center">
+                        <TextBlock Text="CAD 2D" Foreground="#94A3B8" FontSize="10" FontWeight="SemiBold" />
+                    </Border>
+                </StackPanel>
+
+                <!-- Actions -->
+                <WrapPanel x:Name="ActionsHost" Orientation="Horizontal">
+                    <StackPanel MaxWidth="{Binding ActualWidth, ElementName=ActionsHost}"><TextBlock Text="Arquivo" Foreground="#94A3B8"/><WrapPanel>
+                    <Button Style="{StaticResource CadToolbarButtonStyle}" Tag="{StaticResource NewIcon}" Content="Novo" ToolTip="Iniciar outro documento; oferece salvar alterações pendentes" Command="{Binding NewDrawingCommand}" Margin="2,2" />
+                    <Button Style="{StaticResource CadToolbarButtonStyle}" Tag="{StaticResource OpenIcon}" Content="Abrir" ToolTip="Abrir desenho CAD ou DXF" Command="{Binding OpenDrawingCommand}" Margin="2,2" />
+                    <Button Style="{StaticResource CadToolbarButtonStyle}" Tag="{StaticResource SaveIcon}" Content="Salvar" ToolTip="Salvar desenho CAD" Command="{Binding SaveDrawingCommand}" Margin="2,2" />
+                    <Separator Background="#334155" Margin="6,2" />
+                    <Button Style="{StaticResource CadToolbarButtonStyle}" Tag="{StaticResource ImportIcon}" Content="Abrir DXF" ToolTip="Abrir DXF substituindo o desenho atual" Command="{Binding ImportDxfCommand}" Margin="2,2" />
+                    <Button Style="{StaticResource CadToolbarButtonStyle}" Tag="{StaticResource ExportIcon}" Content="Exportar DXF" ToolTip="Exportar desenho para DXF" Command="{Binding ExportDxfCommand}" Margin="2,2" />
+                    <Button Style="{StaticResource CadToolbarButtonStyle}" Tag="{StaticResource ExportIcon}" Content="Exportar SVG" ToolTip="Exportar desenho para SVG" Command="{Binding ExportSvgCommand}" Margin="2,2" />
+                    <Separator Background="#334155" Margin="6,2" />
+                    <Button Style="{StaticResource CadToolbarButtonStyle}" Tag="{StaticResource SampleIcon}" Content="Exemplo" Command="{Binding LoadSampleDrawingCommand}" ToolTip="Carregar desenho de exemplo" Margin="2,2" />
+                    <Separator Background="#334155" Margin="6,2" />
+                    </WrapPanel></StackPanel>
+                    <StackPanel MaxWidth="{Binding ActualWidth, ElementName=ActionsHost}"><TextBlock Text="Editar" Foreground="#94A3B8"/><WrapPanel>
+                    <Button Style="{StaticResource CadToolbarButtonStyle}" Tag="{StaticResource UndoIcon}" Content="Desfazer" Command="{Binding UndoCommand}" ToolTip="Desfazer (Ctrl+Z)" Margin="2,2" />
+                    <Button Style="{StaticResource CadToolbarButtonStyle}" Tag="{StaticResource RedoIcon}" Content="Refazer" Command="{Binding RedoCommand}" ToolTip="Refazer (Ctrl+Y)" Margin="2,2" />
+                    <Separator Background="#334155" Margin="6,2" />
+                    <Button Style="{StaticResource CadToolbarButtonStyle}" Tag="{StaticResource DeleteIcon}" Content="Excluir seleção" Command="{Binding DeleteSelectedCommand}" ToolTip="Excluir entidades selecionadas (Del)" Margin="2,2" />
+                    </WrapPanel></StackPanel>
+                    <StackPanel MaxWidth="{Binding ActualWidth, ElementName=ActionsHost}"><TextBlock Text="Exibir" Foreground="#94A3B8"/><WrapPanel>
+                    <Button Style="{StaticResource CadToolbarButtonStyle}" Tag="{StaticResource ZoomExtentsIcon}" Content="Enquadrar" Command="{Binding ZoomExtentsCommand}" ToolTip="Ajustar zoom para as entidades visíveis (Ctrl+0)" Margin="2,2" />
+                    <Button Style="{StaticResource CadToolbarButtonStyle}" Tag="{StaticResource ResetViewIcon}" Content="Vista inicial" Command="{Binding ResetViewCommand}" ToolTip="Redefinir centro e zoom inicial" Margin="2,2" />
+                    <Separator Background="#334155" Margin="6,2" />
+                    <Button Style="{StaticResource CadToolbarButtonStyle}" Content="Console (F2)" Command="{Binding ToggleConsoleCommand}" ToolTip="Ativar ou desativar o console de comandos (F2)" Margin="2,2" />
+                    </WrapPanel></StackPanel>
+                </WrapPanel>
+            </DockPanel>
+        </Border>
+
+        <!-- Bottom Technical Status Bar -->
+        <Border DockPanel.Dock="Bottom" Background="#1E293B" BorderBrush="#334155" BorderThickness="0,1,0,0" Padding="8,4">
+            <WrapPanel>
+                <StackPanel Orientation="Horizontal"  VerticalAlignment="Center" Margin="0,2">
+                    <TextBlock Text="X: " Foreground="#94A3B8" FontFamily="Consolas" FontSize="11" />
+                    <TextBlock Text="{Binding MouseWorldX, StringFormat={}{0:F3} m}" Foreground="#F8FAFC" FontFamily="Consolas" FontSize="11" Width="75" />
+                    <TextBlock Text="Y: " Foreground="#94A3B8" FontFamily="Consolas" FontSize="11" Margin="6,0,0,0" />
+                    <TextBlock Text="{Binding MouseWorldY, StringFormat={}{0:F3} m}" Foreground="#F8FAFC" FontFamily="Consolas" FontSize="11" Width="75" />
+                    <Separator Background="#334155" Margin="8,2" />
+                    <TextBlock Text="Ferramenta: " Foreground="#94A3B8" FontSize="11" FontWeight="SemiBold" />
+                    <TextBlock Text="{Binding ActiveToolLabel}" Foreground="#38BDF8" FontSize="11" FontWeight="Bold" Margin="0,0,12,0" />
+                    <Separator Background="#334155" Margin="8,2" />
+                    <TextBlock Text="Seleção: " Foreground="#94A3B8" FontSize="11" FontWeight="SemiBold" />
+                    <TextBlock Text="{Binding SelectedCount, StringFormat={}{0} item(s)}" Foreground="#F8FAFC" FontSize="11" Margin="0,0,6,0" />
+                    <Button Style="{StaticResource CadToolbarButtonStyle}" Content="Tudo (Ctrl+A)" Command="{Binding SelectAllCommand}" Padding="4,1" Margin="2,0" FontSize="10" ToolTip="Selecionar todas as entidades visíveis e desbloqueadas" />
+                    <Button Style="{StaticResource CadToolbarButtonStyle}" Content="Inverter" Command="{Binding InvertSelectionCommand}" Padding="4,1" Margin="2,0" FontSize="10" ToolTip="Inverter seleção de entidades visíveis" />
+                    <Button Style="{StaticResource CadToolbarButtonStyle}" Content="Camada Ativa" Command="{Binding SelectActiveLayerCommand}" Padding="4,1" Margin="2,0" FontSize="10" ToolTip="Selecionar todas as entidades da camada ativa" />
+                    <Button Style="{StaticResource CadToolbarButtonStyle}" Content="Limpar (Esc)" Command="{Binding ClearSelectionCommand}" Padding="4,1" Margin="2,0" FontSize="10" ToolTip="Desmarcar todas as entidades" />
+                    <Border Background="#0284C7" CornerRadius="3" Padding="4,1" Margin="6,0,0,0" VerticalAlignment="Center">
+                        <Border.Style>
+                            <Style TargetType="Border">
+                                <Setter Property="Visibility" Value="Collapsed" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding HasActiveSelectionFilter}" Value="True">
+                                        <Setter Property="Visibility" Value="Visible" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Border.Style>
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="{Binding SelectionFilterSummary, StringFormat={}Filtro: {0}}" Foreground="White" FontSize="10" FontWeight="SemiBold" />
+                            <Button Command="{Binding ClearSelectionFilterCommand}" Content=" ✕" Foreground="White" Background="Transparent" BorderThickness="0" Cursor="Hand" ToolTip="Remover filtros de seleção" FontSize="10" Padding="2,0" />
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+
+                <StackPanel Orientation="Horizontal"  VerticalAlignment="Center" Margin="0,2">
+                    <Border Background="#0F172A" BorderBrush="#334155" BorderThickness="1" CornerRadius="3" Padding="6,2" Margin="3,0">
+                        <TextBlock Text="{Binding OrthoLabel, StringFormat={}Ortogonal (F8): {0}}"
+                                   Foreground="#38BDF8" FontSize="10" FontWeight="SemiBold" />
+                    </Border>
+                    <Border Background="#0F172A" BorderBrush="#334155" BorderThickness="1" CornerRadius="3" Padding="6,2" Margin="3,0">
+                        <TextBlock Text="{Binding PolarLabel, StringFormat={}Polar (F10): {0}}"
+                                   Foreground="#38BDF8" FontSize="10" FontWeight="SemiBold" />
+                    </Border>
+                    <Border Background="#0F172A" BorderBrush="#334155" BorderThickness="1" CornerRadius="3" Padding="6,2" Margin="3,0">
+                        <TextBlock Text="{Binding OsnapLabel, StringFormat={}Captura (F3): {0}}"
+                                   Foreground="#EAB308" FontSize="10" FontWeight="SemiBold" />
+                    </Border>
+                    <Separator Background="#334155" Margin="6,2" />
+                    <TextBlock Text="{Binding ZoomLevel, StringFormat={}Zoom: {0:F1}x}" Foreground="#94A3B8" FontSize="11" VerticalAlignment="Center" Margin="4,0" />
+                </StackPanel>
+            </WrapPanel>
+        </Border>
+
+        <TextBlock DockPanel.Dock="Bottom" Text="{Binding ElementName=Viewport, Path=CommandStatus}" TextWrapping="Wrap" Foreground="#F8FAFC" Background="#172033" Padding="8,3" />
+        <Grid x:Name="WorkspaceGrid">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="*" MinHeight="80"/>
+                <RowDefinition Height="5"/>
+                <RowDefinition x:Name="ConsoleRow" Height="180" MinHeight="76"/>
+            </Grid.RowDefinitions>
+            <DockPanel Grid.Row="0">
+        <!-- Left Tool Rail -->
+        <Border DockPanel.Dock="Left" Background="#1E293B" BorderBrush="#334155" BorderThickness="0,0,1,0" Width="70">
+            <controls:CadToolRail />
+        </Border>
+
+        <!-- Right Layers Inspector -->
+        <Border DockPanel.Dock="Right" Background="#1E293B" BorderBrush="#334155" BorderThickness="0">
+            <Expander x:Name="InspectorExpander" ExpandDirection="Left" IsExpanded="True" Foreground="#CBD5E1"
+                      ToolTip="Expandir ou recolher painel lateral">
+                <Expander.Header>
+                    <TextBlock Text="Inspetor" Margin="2,6" FontWeight="SemiBold">
+                        <TextBlock.LayoutTransform><RotateTransform Angle="-90" /></TextBlock.LayoutTransform>
+                    </TextBlock>
+                </Expander.Header>
+            <DockPanel x:Name="InspectorPanel" Margin="4,6,6,6" Width="220" MinWidth="150">
+                <Thumb DockPanel.Dock="Left" Width="6" Cursor="SizeWE" Background="Transparent" DragDelta="ResizeInspector" ToolTip="Arraste para ajustar a largura das camadas" Focusable="True" KeyDown="ResizeInspectorKey">
+                    <Thumb.Template><ControlTemplate TargetType="Thumb"><Grid Background="Transparent"><Border Width="1" HorizontalAlignment="Center" Background="#475569"/></Grid></ControlTemplate></Thumb.Template>
+                </Thumb>
+                <TabControl x:Name="InspectorTabs" Background="Transparent" BorderThickness="0">
+                    <TabControl.Resources>
+                        <Style TargetType="TabItem">
+                            <Setter Property="Background" Value="#111C2E" />
+                            <Setter Property="Foreground" Value="#94A3B8" />
+                            <Setter Property="FontSize" Value="11" />
+                            <Setter Property="FontWeight" Value="SemiBold" />
+                            <Setter Property="Padding" Value="8,4" />
+                            <Setter Property="Template">
+                                <Setter.Value>
+                                    <ControlTemplate TargetType="TabItem">
+                                        <Border x:Name="TabBorder" Background="{TemplateBinding Background}" BorderBrush="#334155" BorderThickness="0,0,0,2" Margin="0,0,4,4" CornerRadius="3,3,0,0" Padding="{TemplateBinding Padding}">
+                                            <ContentPresenter ContentSource="Header" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                        </Border>
+                                        <ControlTemplate.Triggers>
+                                            <Trigger Property="IsSelected" Value="True">
+                                                <Setter TargetName="TabBorder" Property="Background" Value="#1E293B" />
+                                                <Setter TargetName="TabBorder" Property="BorderBrush" Value="#38BDF8" />
+                                                <Setter Property="Foreground" Value="#38BDF8" />
+                                            </Trigger>
+                                            <Trigger Property="IsMouseOver" Value="True">
+                                                <Setter Property="Foreground" Value="#F8FAFC" />
+                                            </Trigger>
+                                        </ControlTemplate.Triggers>
+                                    </ControlTemplate>
+                                </Setter.Value>
+                            </Setter>
+                        </Style>
+                    </TabControl.Resources>
+                    <TabItem Header="Propriedades">
+                        <controls:PropertyInspectorView DataContext="{Binding Properties}" />
+                    </TabItem>
+                    <TabItem Header="Camadas">
+                        <DockPanel LastChildFill="True">
+                            <DockPanel DockPanel.Dock="Top" Margin="4,4,4,8">
+                    <Button DockPanel.Dock="Right" Style="{StaticResource CadToolbarButtonStyle}" Content="👁 Todas" Command="{Binding ShowAllLayersCommand}" ToolTip="Tornar todas as camadas visíveis" Margin="4,0,0,0" Padding="6,2" FontSize="10" />
+                    <TextBlock Text="CAMADAS" Foreground="#94A3B8" FontSize="11" FontWeight="Bold" VerticalAlignment="Center" />
+                </DockPanel>
+                
+                <DockPanel DockPanel.Dock="Top" Margin="2,0,2,8">
+                    <Button DockPanel.Dock="Right" Style="{StaticResource CadButtonStyle}" Content="+" Command="{Binding AddLayerCommand}" ToolTip="Criar nova camada" Width="26" Height="24" Margin="4,0,0,0" Padding="0" />
+                    <TextBox Text="{Binding NewLayerInput, UpdateSourceTrigger=PropertyChanged}" Background="#0F172A" Foreground="#F8FAFC"
+                             BorderBrush="#475569" BorderThickness="1" Padding="4,2" FontSize="11"
+                             ToolTip="Nome da nova camada. Pressione Enter ou clique em +">
+                        <TextBox.InputBindings>
+                            <KeyBinding Key="Return" Command="{Binding AddLayerCommand}" />
+                        </TextBox.InputBindings>
+                    </TextBox>
+                </DockPanel>
+                <TextBox DockPanel.Dock="Top" Text="{Binding LayerFilter, UpdateSourceTrigger=PropertyChanged}" ToolTip="Filtrar camadas por nome" Background="#0F172A" Foreground="#F8FAFC" Margin="2,0,2,6" Padding="4" />
+                <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                <ListBox ItemsSource="{Binding FilteredLayers}" SelectedItem="{Binding SelectedLayer, Mode=TwoWay}" Background="Transparent" BorderThickness="0" ScrollViewer.HorizontalScrollBarVisibility="Disabled" HorizontalContentAlignment="Stretch">
+                    <ListBox.ItemContainerStyle><Style TargetType="ListBoxItem"><Setter Property="Padding" Value="0"/><Setter Property="HorizontalContentAlignment" Value="Stretch"/></Style></ListBox.ItemContainerStyle>
+                    <ListBox.ItemTemplate>
+                        <DataTemplate>
+                            <Border Background="#0F172A" BorderBrush="#334155" BorderThickness="1" CornerRadius="3" Padding="6,4" Margin="2,3">
+                                <Border.ContextMenu>
+                                    <ContextMenu>
+                                        <MenuItem Header="Ativar para desenho" Command="{Binding ActivateCommand}" />
+                                        <MenuItem Header="Renomear…" Command="{Binding RenameCommand}" />
+                                        <MenuItem Header="Bloquear / desbloquear" Command="{Binding LockCommand}" />
+                                        <MenuItem Header="Transferir seleção para esta camada" Command="{Binding TransferCommand}" />
+                                        <Separator/>
+                                        <MenuItem Header="Excluir camada…" Command="{Binding DeleteCommand}" />
+                                    </ContextMenu>
+                                </Border.ContextMenu>
+                                <StackPanel>
+                                <DockPanel LastChildFill="True">
+                                    <CheckBox IsChecked="{Binding IsVisible, Mode=TwoWay}" ToolTip="Mostrar ou ocultar camada" VerticalAlignment="Center" Margin="0,0,6,0" />
+                                    <RadioButton IsChecked="{Binding IsActive, Mode=TwoWay}" GroupName="ActiveLayer" ToolTip="Camada ativa para novas entidades; independente da linha selecionada" VerticalAlignment="Center" Margin="0,0,6,0" />
+                                    <Border Width="12" Height="12" CornerRadius="2" Margin="0,0,6,0" VerticalAlignment="Center"
+                                            Background="{Binding ColorHex}" BorderBrush="#94A3B8" BorderThickness="1" />
+                                    <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis" ToolTip="{Binding Name}" Foreground="#F8FAFC" FontSize="11" VerticalAlignment="Center" />
+                                </DockPanel>
+                                <TextBlock Text="{Binding Details}" Foreground="#94A3B8" FontSize="10" TextTrimming="CharacterEllipsis" ToolTip="{Binding Details}" />
+                                <DockPanel Margin="0,3,0,0">
+                                    <CheckBox DockPanel.Dock="Left" Content="Bloquear" Foreground="#CBD5E1" IsChecked="{Binding IsLocked, Mode=TwoWay}" ToolTip="Bloqueio impede editar; permite inspecionar e capturar pontos" />
+                                </DockPanel>
+                                <TextBox Text="{Binding ColorHex, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" ToolTip="Cor explícita da camada em #RRGGBB; não altera cores explícitas das entidades" Background="#172033" Foreground="#F8FAFC" BorderBrush="#475569" Padding="2" />
+                                </StackPanel>
+                            </Border>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+                </ScrollViewer>
+                        </DockPanel>
+                    </TabItem>
+                </TabControl>
+            </DockPanel>
+            </Expander>
+        </Border>
+
+        <!-- Main CAD Viewport -->
+        <controls:CadViewport x:Name="Viewport"
+                              Document="{Binding Document}"
+                              LayerRevision="{Binding LayerRevision}"
+                              DrawingRevision="{Binding DrawingRevision}"
+                              ActiveTool="{Binding ActiveTool, Mode=TwoWay}"
+                              UndoManager="{Binding UndoManager}"
+                              ToggleOrthoCommand="{Binding ToggleOrthoCommand}"
+                              TogglePolarCommand="{Binding TogglePolarCommand}"
+                              ToggleOsnapCommand="{Binding ToggleOsnapCommand}"
+                              MouseWorldX="{Binding MouseWorldX, Mode=TwoWay}"
+                              MouseWorldY="{Binding MouseWorldY, Mode=TwoWay}"
+                              ZoomLevel="{Binding ZoomLevel, Mode=TwoWay}"
+                              SelectedCount="{Binding SelectedCount, Mode=TwoWay}"
+                              SelectedTypeFilter="{Binding SelectedTypeFilter, Mode=TwoWay}"
+                              SelectedLayerFilter="{Binding SelectedLayerFilter, Mode=TwoWay}" />
+            </DockPanel>
+            <GridSplitter x:Name="ConsoleDivider" Grid.Row="1" Height="5" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" ResizeDirection="Rows" ResizeBehavior="PreviousAndNext" ShowsPreview="True" DragCompleted="ConsoleResized" KeyUp="ConsoleResizeKey" KeyboardIncrement="10" ToolTip="Arraste ou use ↑/↓ para ajustar o console">
+                <GridSplitter.Template><ControlTemplate TargetType="GridSplitter"><Grid Background="Transparent"><Border Height="1" VerticalAlignment="Center" Background="#475569"/></Grid></ControlTemplate></GridSplitter.Template>
+            </GridSplitter>
+            <controls:CadConsole x:Name="ConsoleView" Grid.Row="2" ExpandedChanged="ConsoleExpandedChanged" ResetSizeRequested="ResetConsoleSize"/>
+        </Grid>
+    </DockPanel>
+</Window>

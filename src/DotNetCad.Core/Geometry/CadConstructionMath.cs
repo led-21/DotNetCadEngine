@@ -139,6 +139,16 @@ public static class CadConstructionMath
         return pickPosition < intersectionPosition ? (inter.Value, p2) : (p1, inter.Value);
     }
 
+    public static ((Point2D Start, Point2D End) Seg1, (Point2D Start, Point2D End) Seg2)? BreakSegment(Point2D p1, Point2D p2, Point2D breakPoint)
+    {
+        var seg = new LineSegment2D(p1, p2);
+        var proj = seg.ClosestPointTo(breakPoint);
+        var d1 = p1.DistanceTo(proj);
+        var d2 = p2.DistanceTo(proj);
+        if (d1 < 1e-4 || d2 < 1e-4) return null;
+        return ((p1, proj), (proj, p2));
+    }
+
     public static (Point2D Center, Point2D TangentA, Point2D TangentB)? CreateFillet(Point2D a1, Point2D a2, Point2D b1, Point2D b2, double radius)
     {
         var inter = FindLineIntersection(a1, a2, b1, b2);

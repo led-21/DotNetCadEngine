@@ -38,7 +38,20 @@ public class LayoutMatrixTests
                     using(var file=System.IO.File.Create(System.IO.Path.Combine(dir,$"{size.Item1}x{size.Item2}-{scale}.png")))encoder.Save(file);
                     log.Add($"Window {window.ActualWidth}x{window.ActualHeight}; render DPI scale {scale}; viewport {viewport.ActualWidth}x{viewport.ActualHeight}; native DPI {VisualTreeHelper.GetDpi(window).PixelsPerInchX}; console collapsed");
                     console.IsHistoryExpanded=true;window.UpdateLayout();
+                    Assert.True(viewport.ActualHeight>=79.5,"Minimum viewport lost with expanded history");
+                    var commandInput=(TextBox)console.FindName("Input");
+                    Assert.True(commandInput.TranslatePoint(new Point(0,commandInput.ActualHeight),root).Y<=root.ActualHeight+1,"Input clipped with expanded history");
+                    var expanded=new RenderTargetBitmap((int)(window.ActualWidth*scale),(int)(window.ActualHeight*scale),96*scale,96*scale,PixelFormats.Pbgra32);expanded.Render(window);
+                    var expandedEncoder=new PngBitmapEncoder();expandedEncoder.Frames.Add(BitmapFrame.Create(expanded));
+                    using(var file=System.IO.File.Create(System.IO.Path.Combine(dir,$"{size.Item1}x{size.Item2}-{scale}-expanded.png")))expandedEncoder.Save(file);
                 }
+                window.Width=1100;window.Height=720;window.UpdateLayout();
+                var divider=(GridSplitter)window.FindName("ConsoleDivider");divider.Focus();
+                var inputSource=PresentationSource.FromVisual(divider)!;
+                var oldHeight=console.ActualHeight;
+                divider.RaiseEvent(new System.Windows.Input.KeyEventArgs(System.Windows.Input.Keyboard.PrimaryDevice,inputSource,0,System.Windows.Input.Key.Up){RoutedEvent=System.Windows.Input.Keyboard.KeyDownEvent});window.UpdateLayout();
+                divider.RaiseEvent(new System.Windows.Input.KeyEventArgs(System.Windows.Input.Keyboard.PrimaryDevice,inputSource,0,System.Windows.Input.Key.Up){RoutedEvent=System.Windows.Input.Keyboard.KeyUpEvent});
+                Assert.True(console.ActualHeight>oldHeight,"GridSplitter keyboard resize failed");
                 root.LayoutTransform=Transform.Identity;window.WindowState=WindowState.Maximized;window.UpdateLayout();
                 log.Add($"Maximized: {window.ActualWidth}x{window.ActualHeight}; viewport {viewport.ActualWidth}x{viewport.ActualHeight}");
                 System.IO.File.WriteAllLines(System.IO.Path.Combine(dir,"results.txt"),log);

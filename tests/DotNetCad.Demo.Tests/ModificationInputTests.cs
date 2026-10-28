@@ -26,8 +26,7 @@ public class ModificationInputTests
                 vp.ActiveTool=CadToolType.Move;
                 Text("0;0"); Key(System.Windows.Input.Key.Enter);
                 Text("@2,35;0"); Key(System.Windows.Input.Key.Enter);
-                Assert.Equal(0,line.StartPoint.X);
-                Key(System.Windows.Input.Key.Enter); Assert.Equal(2.35,line.StartPoint.X,8);
+                Assert.Equal(2.35,line.StartPoint.X,8); // Parameter submission commits; no second Enter.
                 Assert.Equal(1,h.UndoCount);
                 vp.ActiveTool=CadToolType.Copy;
                 var click = new MouseButtonEventArgs(Mouse.PrimaryDevice,0,MouseButton.Left) { RoutedEvent=Mouse.MouseDownEvent };
@@ -47,8 +46,7 @@ public class ModificationInputTests
                 Text("0,25"); Key(System.Windows.Input.Key.Enter);
                 Assert.Single(d.Entities);
                 typeof(CadViewport).GetMethod("OnMouseDown",BindingFlags.Instance|BindingFlags.NonPublic)!.Invoke(vp,[new MouseButtonEventArgs(Mouse.PrimaryDevice,0,MouseButton.Left) { RoutedEvent=Mouse.MouseDownEvent }]);
-                Assert.Single(d.Entities);
-                Key(System.Windows.Input.Key.Enter);
+                Assert.Equal(2,d.Entities.Count);
                 var annotation=Assert.IsType<CadText>(d.Entities.Last());
                 Assert.Equal("Anotação real",annotation.Text); Assert.Equal(.25,annotation.Height);
                 h.Undo(); Assert.Single(d.Entities); h.Redo(); Assert.Equal(2,d.Entities.Count);
@@ -56,7 +54,7 @@ public class ModificationInputTests
                 foreach (var stage in new[]{0,1,2}) {
                     vp.ActiveTool=CadToolType.Mirror;
                     if(stage>0) { Text("0;0"); Key(System.Windows.Input.Key.Enter); }
-                    if(stage>1) { Text("1;1"); Key(System.Windows.Input.Key.Enter); }
+                    if(stage>1) { var mirror=(CadModificationSession)typeof(CadViewport).GetField("_modification",BindingFlags.Instance|BindingFlags.NonPublic)!.GetValue(vp)!;mirror.Hover(new(1,1)); }
                     Key(System.Windows.Input.Key.Escape);
                     Assert.Equal(1,h.UndoCount); Assert.Equal(2.35,line.StartPoint.X,8);
                 }

@@ -46,6 +46,16 @@ public sealed class CadDimension : CadEntity
         LineThickness = 1.0;
     }
 
+    public CadDimension(Point2D start, Point2D end, Point2D offset, string layer = "Dimensions", string colorHex = "#EF4444")
+    {
+        StartPoint = start;
+        EndPoint = end;
+        OffsetPoint = offset;
+        Layer = layer;
+        ColorHex = colorHex;
+        LineThickness = 1.0;
+    }
+
     public override BoundingBox2D BoundingBox
     {
         get

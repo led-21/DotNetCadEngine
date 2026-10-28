@@ -30,6 +30,11 @@ public class ConsoleViewTests
                 Assert.Equal(position,scroll.VerticalOffset);Assert.True((int)typeof(CadConsole).GetField("_unread",BindingFlags.Instance|BindingFlags.NonPublic)!.GetValue(console)!>0);
                 var container=output.ItemContainerGenerator.ContainerFromIndex(0);Assert.NotNull(container);
                 Assert.Null(output.ItemContainerGenerator.ContainerFromIndex(300)); // recycling virtualization
+                // Exercise pruning while retaining an anchor that is still within the memory window.
+                scroll.ScrollToVerticalOffset(100);Pump();
+                var anchor=output.Items[(int)scroll.VerticalOffset];
+                for(int i=0;i<550;i++)vm.Console.Add("fluxo "+i);
+                Pump();Assert.Same(anchor,output.Items[(int)scroll.VerticalOffset]);
                 search.Text="nova mensagem";Pump();Assert.Single(output.Items.Cast<object>());
                 errors.IsChecked=true;Pump();Assert.Empty(output.Items.Cast<object>());
                 vm.Console.Add("nova mensagem inválida",ConsoleOrigin.MCP,ConsoleSeverity.Erro);Pump();Assert.Single(output.Items.Cast<object>());
@@ -39,8 +44,13 @@ public class ConsoleViewTests
                 typeof(CadConsole).GetMethod("Execute",BindingFlags.Instance|BindingFlags.NonPublic)!.Invoke(console,[console,new RoutedEventArgs()]);
                 Assert.Equal("LINE inválida",input.Text);Assert.True(input.IsKeyboardFocusWithin);
                 input.SelectAll();Assert.True(ApplicationCommands.Copy.CanExecute(null,input));
+                string? copied=null;
+                DataObject.AddCopyingHandler(input,(_,args)=>{copied=args.DataObject.GetData(DataFormats.UnicodeText) as string;args.CancelCommand();});
+                ApplicationCommands.Copy.Execute(null,input);Assert.Equal("LINE inválida",copied); // Cancel native clipboard write, preserving the user's clipboard.
                 var entityCount=vm.Document.Entities.Count;var undo=vm.UndoManager.UndoCount;
                 ApplicationCommands.Delete.Execute(null,input);Pump();Assert.Equal(entityCount,vm.Document.Entities.Count);Assert.Equal(undo,vm.UndoManager.UndoCount);
+                ApplicationCommands.Undo.Execute(null,input);Assert.Equal("LINE inválida",input.Text);
+                Assert.Equal(undo,vm.UndoManager.UndoCount);
                 vm.Console.Remember("LIST");input.Text="rascunho";
                 var source=PresentationSource.FromVisual(input)!;
                 void Key(Key key)=>typeof(CadConsole).GetMethod("InputKeyDown",BindingFlags.Instance|BindingFlags.NonPublic)!.Invoke(console,[input,new KeyEventArgs(Keyboard.PrimaryDevice,source,0,key){RoutedEvent=Keyboard.PreviewKeyDownEvent}]);

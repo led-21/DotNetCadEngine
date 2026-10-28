@@ -31,7 +31,9 @@ public static class SvgCadExporter
         var sb = new StringBuilder();
 
         sb.AppendLine("<?xml version=\"1.0\" encoding=\"utf-8\"?>");
-        sb.AppendLine($"<svg version=\"1.1\" xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 {width.ToString("F3", inv)} {height.ToString("F3", inv)}\">");
+        var unit = DotNetCad.Core.Measurements.CadUnitConverter.NormalizeUnit(document.Preferences.DisplayUnit);
+        var prec = document.Preferences.DecimalPrecision;
+        sb.AppendLine($"<svg version=\"1.1\" xmlns=\"http://www.w3.org/2000/svg\" xmlns:cad=\"http://schemas.dotnetcad.org/cad\" cad:unit=\"{unit}\" cad:precision=\"{prec}\" data-unit=\"{unit}\" viewBox=\"0 0 {width.ToString("F3", inv)} {height.ToString("F3", inv)}\">");
         sb.AppendLine($"  <rect width=\"100%\" height=\"100%\" fill=\"#0F172A\" />"); // Dark CAD background
 
         // CAD to SVG transformation: Y is inverted (CAD Y grows upwards, SVG Y downwards)

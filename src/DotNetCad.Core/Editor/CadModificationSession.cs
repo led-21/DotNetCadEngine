@@ -13,6 +13,15 @@ public sealed class CadModificationSession(CadToolType tool)
     public int Step { get; private set; }
     public Point2D? Origin { get; private set; }
     private Point2D _target;
+    private double _referenceDegrees;
+    private bool _usesReference;
+    public Point2D Target => _target;
+    public Point2D? PrecisionOrigin => Tool == CadToolType.Offset && Step == 2 ? null : Origin;
+    public double AngleDegrees => _value;
+    public double ReferenceDegrees => _referenceDegrees;
+    public double Distance => Tool == CadToolType.Offset && Step == 6 && Origin is {} o ? o.DistanceTo(_target) : _value;
+    public IReadOnlyList<ICadEntity> Sources => Array.AsReadOnly(_sources);
+    public bool IsReady => Step == 4 && Preview.Count > 0 && Error.Length == 0;
     private double _value;
     private bool _keep;
     private ICadEntity[] _sources = [];
@@ -20,15 +29,17 @@ public sealed class CadModificationSession(CadToolType tool)
     public string Error { get; private set; } = "";
     public string Prompt => Step switch
     {
-        0 => "Selecione entidades; Enter para continuar. Esc cancela.",
-        1 when Tool == CadToolType.Offset => "Distância positiva em metros (ex.: 2,35).",
+        0 => "Selecione entidades; botão direito ou Enter encerra a seleção. Esc cancela.",
+        1 when Tool == CadToolType.Offset => "Offset: digite a distância em metros e clique no lado (Enter opcional), ou clique em dois pontos para medir.",
+        6 => "Offset: clique no segundo ponto da distância.",
+        5 => "Rotação: clique na direção de referência a partir do pivô ou digite o ângulo de referência.",
         1 => "Clique ou digite ponto base / pivô / primeiro ponto do eixo: x;y (m).",
         2 when Tool is CadToolType.Move or CadToolType.Copy => "Destino: clique ou x;y; vetor: @dx;dy; distância<ângulo (m/graus).",
-        2 when Tool == CadToolType.Rotate => "Ângulo em graus ou clique direção a partir do pivô.",
+        2 when Tool == CadToolType.Rotate => "Rotação: clique na direção final ou digite ângulo em graus; R define referência.",
         2 when Tool == CadToolType.Mirror => "Segundo ponto do eixo: clique ou x;y.",
         2 => "Clique no lado desejado (linhas: esquerda/direita; círculos: dentro/fora).",
-        3 when Tool == CadToolType.Mirror => "Manter original? Digite sim ou não e Enter.",
-        _ => "Preview: Enter confirma; Esc cancela."
+        3 when Tool == CadToolType.Mirror => "Espelhar: escolha Manter original ou Substituir original no menu; Esc cancela.",
+        _ => "Parâmetros completos; aplicando operação."
     };
     public bool Select(IEnumerable<ICadEntity> entities)
     {
@@ -42,18 +53,26 @@ public sealed class CadModificationSession(CadToolType tool)
     }
     public bool Input(string text)
     {
-        text = text.Trim();
+        text = text.Trim().ToLowerInvariant();
+        if(Tool == CadToolType.Rotate && Step == 2 && text is "r" or "referencia" or "referência")
+        { Step=5;_value=0;Preview=[];Error="";return true; }
+        if(Tool == CadToolType.Rotate && Step == 5)
+        {
+            if(!Number(text,out var reference))return Fail("Referência deve ser um ângulo finito ou ponto pelo mouse.");
+            _referenceDegrees=reference%360;_usesReference=true;_value=0;Step=2;Error="";return true;
+        }
         if (Step == 3 && Tool == CadToolType.Mirror)
         {
             if (text is not ("sim" or "não" or "nao")) return Fail("Informe sim ou não.");
-            _keep = text == "sim"; Step = 4; return Build();
+            _keep = text == "sim"; return CompleteTarget(4);
         }
         if (Step == 1 && Tool == CadToolType.Offset || Step == 2 && Tool == CadToolType.Rotate)
         {
             if (!Number(text, out var n) || Tool == CadToolType.Offset && n < 0.01) return Fail("Valor finito inválido.");
             _value = n;
             if (Tool == CadToolType.Offset) { Step = 2; return true; }
-            Step = 4; return Build();
+            if(_usesReference)_value-=_referenceDegrees;
+            return CompleteTarget(4);
         }
         if (Step == 2 && Tool is CadToolType.Move or CadToolType.Copy && text.Contains('<'))
         {
@@ -71,18 +90,47 @@ public sealed class CadModificationSession(CadToolType tool)
     public bool Point(Point2D p)
     {
         if (!double.IsFinite(p.X) || !double.IsFinite(p.Y)) return Fail("Ponto inválido.");
-        if (Step == 1 && Tool != CadToolType.Offset) { Origin = p; Step = 2; Error = ""; return true; }
+        if(Tool == CadToolType.Rotate && Step == 5)
+        {
+            if(Origin!.Value.DistanceTo(p)<1e-6)return Fail("Direção de referência precisa ser diferente do pivô.");
+            _referenceDegrees=Math.Atan2(p.Y-Origin.Value.Y,p.X-Origin.Value.X)*180/Math.PI;
+            _usesReference=true;_value=0;_target=p;Step=2;Error="";return true;
+        }
+        if(Tool == CadToolType.Offset && Step == 1) { Origin=p;_target=p;Step=6;Error="";return true; }
+        if(Tool == CadToolType.Offset && Step == 6)
+        {
+            var distance=Origin!.Value.DistanceTo(p);
+            if(!double.IsFinite(distance) || distance<.01)return Fail("Distância deve ser pelo menos 0,01 m.");
+            _value=distance;_target=p;Step=2;Error="";return true;
+        }
+        if (Step == 1 && Tool != CadToolType.Offset) { Origin = p; _target=p;Step = 2; Error = ""; return true; }
         if (Step != 2) return false;
         _target = p;
-        if (Tool == CadToolType.Rotate) _value = Math.Atan2(p.Y - Origin!.Value.Y, p.X - Origin.Value.X) * 180 / Math.PI;
+        if (Tool == CadToolType.Rotate)
+        {
+            if(Origin!.Value.DistanceTo(p)<1e-6)return Fail("Escolha uma direção fora do pivô.");
+            _value = Math.Atan2(p.Y - Origin.Value.Y, p.X - Origin.Value.X) * 180 / Math.PI - _referenceDegrees;
+        }
         if (Tool == CadToolType.Mirror && Origin!.Value.DistanceTo(p) < 0.01) return Fail("Eixo precisa de dois pontos distintos.");
-        Step = Tool == CadToolType.Mirror ? 3 : 4;
-        return Build();
+        return CompleteTarget(Tool == CadToolType.Mirror ? 3 : 4);
     }
-    public void Hover(Point2D p)
+    public void Hover(Point2D p,string? offsetDistance=null)
     {
-        if (Step != 2 || Tool == CadToolType.Rotate) return;
+        if(Tool==CadToolType.Offset && Step==1)
+        {
+            if(string.IsNullOrWhiteSpace(offsetDistance)){Preview=[];Error="";return;}
+            if(!Number(offsetDistance,out var distance) || distance<.01){Fail("Informe uma distância finita de pelo menos 0,01 m.");return;}
+            _value=distance;_target=p;Build();return; // preview only; the click submits the distance and side together
+        }
+        if(Step is 5 or 6) { _target=p;return; }
+        if (Step != 2) return;
         var step = Step; Point(p); Step = step;
+    }
+    private bool CompleteTarget(int nextStep)
+    {
+        var previous=Step;Step=nextStep;
+        if(Build())return true;
+        Step=previous;return false;
     }
     public bool Confirm(CadDocument document, UndoRedoManager history)
     {
@@ -117,7 +165,11 @@ public sealed class CadModificationSession(CadToolType tool)
                     if (dx == 0 && dy == 0) return Fail("Deslocamento deve ser diferente de zero.");
                     c.Translate(dx, dy);
                 }
-                else if (Tool == CadToolType.Rotate) c.Rotate(Origin!.Value, _value % 360);
+                else if (Tool == CadToolType.Rotate)
+                {
+                    if(!double.IsFinite(_value) || Math.Abs(_value%360)<1e-9)return Fail("Ângulo deve produzir uma rotação diferente de zero.");
+                    c.Rotate(Origin!.Value, _value % 360);
+                }
                 else if (Tool == CadToolType.Mirror) c.Mirror(Origin!.Value, _target);
                 else if (e is CadLine l)
                 {
@@ -128,6 +180,7 @@ public sealed class CadModificationSession(CadToolType tool)
                 }
                 else if (e is CadCircle circle)
                 {
+                    if(Math.Abs(_target.DistanceTo(circle.Center)-circle.Radius)<1e-6)return Fail("Escolha um lado fora da circunferência.");
                     var radius = circle.Radius + (_target.DistanceTo(circle.Center) > circle.Radius ? _value : -_value);
                     if (radius < 0.05) return Fail("Offset resulta em raio inválido.");
                     c = new CadCircle(circle.Center,radius,e.Layer,e.ColorHex) { LineThickness = e.LineThickness };

@@ -1,4 +1,4 @@
-param(
+﻿param(
     [string]$OutputDir = "$PSScriptRoot\..\installer\assets",
     [string]$AppAssetsDir = "$PSScriptRoot\..\src\DotNetCad.Demo\Assets"
 )

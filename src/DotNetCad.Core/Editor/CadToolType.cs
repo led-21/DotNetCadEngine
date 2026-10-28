@@ -16,6 +16,7 @@ public enum CadToolType
     Offset,
     Trim,
     Extend,
+    Break,
     Pan,
     Text
 }

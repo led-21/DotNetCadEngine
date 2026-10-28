@@ -187,6 +187,38 @@ public static class CadCommandProcessor
                     if (!validation.IsValid) return new(false, validation.ErrorMessage!);
                     return ReplaceLine(document, history, line, [CopyLine(line, newStart, newEnd)], "Extend line");
                 }
+                case "BREAK" when parts.Length is 3 or 4:
+                {
+                    if (!TryLine(document, parts[1], out var line, out var error)) return new(false, error);
+                    if (!Point(parts[2], out var pt1)) return InvalidPoint();
+                    if (parts.Length == 3)
+                    {
+                        var broken = CadConstructionMath.BreakSegment(line!.StartPoint, line.EndPoint, pt1);
+                        if (broken == null) return new(false, "Break point is too close to line endpoints or not on line.");
+                        var line1 = CopyLine(line, broken.Value.Seg1.Start, broken.Value.Seg1.End);
+                        var line2 = CopyLine(line, broken.Value.Seg2.Start, broken.Value.Seg2.End);
+                        return ReplaceLine(document, history, line, [line1, line2], "Break line");
+                    }
+                    else
+                    {
+                        if (!Point(parts[3], out var pt2)) return InvalidPoint();
+                        var seg = new LineSegment2D(line!.StartPoint, line.EndPoint);
+                        var proj1 = seg.ClosestPointTo(pt1);
+                        var proj2 = seg.ClosestPointTo(pt2);
+                        var d1 = line.StartPoint.DistanceTo(proj1);
+                        var d2 = line.StartPoint.DistanceTo(proj2);
+                        var firstPt = d1 <= d2 ? proj1 : proj2;
+                        var secondPt = d1 <= d2 ? proj2 : proj1;
+                        var remaining = new List<CadLine>();
+                        if (line.StartPoint.DistanceTo(firstPt) >= 0.01)
+                            remaining.Add(CopyLine(line, line.StartPoint, firstPt));
+                        if (secondPt.DistanceTo(line.EndPoint) >= 0.01)
+                            remaining.Add(CopyLine(line, secondPt, line.EndPoint));
+                        if (remaining.Count == 0)
+                            return new(false, "Break points cover the entire line; use DELETE instead.");
+                        return ReplaceLine(document, history, line, remaining, "Break line");
+                    }
+                }
                 case "OFFSET" when parts.Length is 3 or 4:
                 {
                     if (!Guid.TryParse(parts[1], out var id)) return new(false, "Use an entity ID from LIST.");

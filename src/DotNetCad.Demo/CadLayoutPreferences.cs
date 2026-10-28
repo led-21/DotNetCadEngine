@@ -1,7 +1,7 @@
 using System.IO;
 using System.Text.Json;
 namespace DotNetCad.Demo;
-public sealed record CadLayoutPreferences(double ConsoleHeight=180,bool ConsoleExpanded=true,double InspectorWidth=180,bool InspectorExpanded=true)
+public sealed record CadLayoutPreferences(double ConsoleHeight=180,bool ConsoleExpanded=true,double InspectorWidth=180,bool InspectorExpanded=true,bool IsConsoleVisible=true)
 {
     public static string UserPath=>Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"DotNetCadEngine","layout.json");
     public static CadLayoutPreferences Load(string? path=null)

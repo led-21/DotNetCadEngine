@@ -31,6 +31,18 @@ public static class CadCoordinateParser
         bool Number(string value, out double result)
         {
             var v = value.Trim();
+            if (v.EndsWith("mm", StringComparison.OrdinalIgnoreCase))
+            {
+                if (double.TryParse(v[..^2].Trim().Replace(',', '.'), NumberStyles.Float, CultureInfo.InvariantCulture, out var n) && double.IsFinite(n))
+                { result = n * 0.001; return true; }
+                result = 0; return false;
+            }
+            if (v.EndsWith("cm", StringComparison.OrdinalIgnoreCase))
+            {
+                if (double.TryParse(v[..^2].Trim().Replace(',', '.'), NumberStyles.Float, CultureInfo.InvariantCulture, out var n) && double.IsFinite(n))
+                { result = n * 0.01; return true; }
+                result = 0; return false;
+            }
             if (v.EndsWith('m') || v.EndsWith('M')) v = v[..^1].Trim();
             else if (v.EndsWith('°')) v = v[..^1].Trim();
             else if (v.EndsWith("deg", StringComparison.OrdinalIgnoreCase)) v = v[..^3].Trim();
@@ -80,13 +92,14 @@ public static class CadCoordinateParser
         }
 
         double x, y;
-        if (relative && text.Contains('<'))
+        if (text.Contains('<'))
         {
             var parts = text.Split('<');
             if (parts.Length != 2 || !Number(parts[0], out var distance) || !Number(parts[1], out var angle) || distance <= 0) return false;
             var radians = (angle % 360) * Math.PI / 180;
             x = distance * Math.Cos(radians);
             y = distance * Math.Sin(radians);
+            if (origin != null) relative = true;
         }
         else
         {
