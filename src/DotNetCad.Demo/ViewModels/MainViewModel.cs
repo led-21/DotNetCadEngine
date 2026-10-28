@@ -36,7 +36,10 @@ public sealed class MainViewModel : ObservableObject
     public int DrawingRevision
     {
         get => _drawingRevision;
-        private set => SetProperty(ref _drawingRevision, value);
+        private set
+        {
+            if (SetProperty(ref _drawingRevision, value)) CommandManager.InvalidateRequerySuggested();
+        }
     }
 
     public string ConsoleInput
@@ -50,7 +53,10 @@ public sealed class MainViewModel : ObservableObject
     public int LayerRevision
     {
         get => _layerRevision;
-        private set => SetProperty(ref _layerRevision, value);
+        private set
+        {
+            if (SetProperty(ref _layerRevision, value)) CommandManager.InvalidateRequerySuggested();
+        }
     }
 
     public CadDocument Document
@@ -97,7 +103,10 @@ public sealed class MainViewModel : ObservableObject
     public int SelectedCount
     {
         get => _selectedCount;
-        set => SetProperty(ref _selectedCount, value);
+        set
+        {
+            if (SetProperty(ref _selectedCount, value)) CommandManager.InvalidateRequerySuggested();
+        }
     }
 
     public bool IsOrthoEnabled
@@ -217,16 +226,16 @@ public sealed class MainViewModel : ObservableObject
             ResetViewHandler?.Invoke();
             AppendConsole("CAD: Posição e zoom da tela redefinidos.");
         });
-        DeleteSelectedCommand = new RelayCommand(DeleteSelectedEntities);
-        ClearDrawingCommand = new RelayCommand(ClearDrawing);
+        DeleteSelectedCommand = new RelayCommand(DeleteSelectedEntities, () => Document.Entities.Any(e => e.IsSelected));
+        ClearDrawingCommand = new RelayCommand(ClearDrawing, () => Document.Entities.Count > 0);
         AddLayerCommand = new RelayCommand(AddLayerFromInput);
         ShowAllLayersCommand = new RelayCommand(ShowAllLayers);
         AddTextPromptCommand = new RelayCommand(AddTextPrompt);
-        MoveSelectedCommand = new RelayCommand(MoveSelectedEntities);
-        CopySelectedCommand = new RelayCommand(CopySelectedEntities);
-        RotateSelectedCommand = new RelayCommand(RotateSelectedEntities);
-        MirrorSelectedCommand = new RelayCommand(MirrorSelectedEntities);
-        OffsetSelectedCommand = new RelayCommand(OffsetSelectedEntities);
+        MoveSelectedCommand = new RelayCommand(MoveSelectedEntities, () => Document.Entities.Any(e => e.IsSelected));
+        CopySelectedCommand = new RelayCommand(CopySelectedEntities, () => Document.Entities.Any(e => e.IsSelected));
+        RotateSelectedCommand = new RelayCommand(RotateSelectedEntities, () => Document.Entities.Any(e => e.IsSelected));
+        MirrorSelectedCommand = new RelayCommand(MirrorSelectedEntities, () => Document.Entities.Any(e => e.IsSelected));
+        OffsetSelectedCommand = new RelayCommand(OffsetSelectedEntities, () => Document.Entities.Any(e => e.IsSelected));
         ExecuteConsoleCommand = new RelayCommand(() =>
         {
             var input = ConsoleInput;

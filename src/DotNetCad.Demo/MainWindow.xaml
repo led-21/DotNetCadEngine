@@ -7,7 +7,8 @@
         xmlns:controls="clr-namespace:DotNetCad.Demo.Controls"
         mc:Ignorable="d"
         Title="DotNetCadEngine — 2D CAD Playground"
-        Height="720" Width="1100"
+        Height="720" Width="1100" MinWidth="640" MinHeight="480"
+        UseLayoutRounding="True"
         WindowStartupLocation="CenterScreen"
         Background="#0F172A">
 
@@ -35,7 +36,7 @@
         <Border DockPanel.Dock="Top" Background="#1E293B" BorderBrush="#334155" BorderThickness="0,0,0,1" Padding="8,6">
             <DockPanel LastChildFill="True">
                 <!-- Branding / Title -->
-                <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="4,0,16,0">
+                <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" VerticalAlignment="Center" Margin="4,0,16,6">
                     <TextBlock Text="DotNetCad" Foreground="#38BDF8" FontWeight="Bold" FontSize="15" />
                     <TextBlock Text="Engine" Foreground="#F8FAFC" FontWeight="Bold" FontSize="15" />
                     <Border Background="#334155" CornerRadius="3" Padding="4,1" Margin="8,0,0,0" VerticalAlignment="Center">
@@ -44,33 +45,33 @@
                 </StackPanel>
 
                 <!-- Actions -->
-                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                    <Button Style="{StaticResource CadToolbarButtonStyle}" Tag="{StaticResource NewIcon}" Content="New" ToolTip="Criar desenho vazio" Command="{Binding NewDrawingCommand}" Margin="4,0" />
-                    <Button Style="{StaticResource CadToolbarButtonStyle}" Tag="{StaticResource OpenIcon}" Content="Open" ToolTip="Abrir desenho CAD ou DXF" Command="{Binding OpenDrawingCommand}" Margin="4,0" />
-                    <Button Style="{StaticResource CadToolbarButtonStyle}" Tag="{StaticResource SaveIcon}" Content="Save" ToolTip="Salvar desenho CAD" Command="{Binding SaveDrawingCommand}" Margin="4,0" />
+                <WrapPanel Orientation="Horizontal">
+                    <Button Style="{StaticResource CadToolbarButtonStyle}" Tag="{StaticResource NewIcon}" Content="Novo" ToolTip="Criar desenho vazio" Command="{Binding NewDrawingCommand}" Margin="2,2" />
+                    <Button Style="{StaticResource CadToolbarButtonStyle}" Tag="{StaticResource OpenIcon}" Content="Abrir" ToolTip="Abrir desenho CAD ou DXF" Command="{Binding OpenDrawingCommand}" Margin="2,2" />
+                    <Button Style="{StaticResource CadToolbarButtonStyle}" Tag="{StaticResource SaveIcon}" Content="Salvar" ToolTip="Salvar desenho CAD" Command="{Binding SaveDrawingCommand}" Margin="2,2" />
                     <Separator Background="#334155" Margin="6,2" />
-                    <Button Style="{StaticResource CadToolbarButtonStyle}" Tag="{StaticResource ImportIcon}" Content="Import DXF" ToolTip="Importar desenho DXF" Command="{Binding ImportDxfCommand}" Margin="4,0" />
-                    <Button Style="{StaticResource CadToolbarButtonStyle}" Tag="{StaticResource ExportIcon}" Content="Export DXF" ToolTip="Exportar desenho para DXF" Command="{Binding ExportDxfCommand}" Margin="4,0" />
-                    <Button Style="{StaticResource CadToolbarButtonStyle}" Tag="{StaticResource ExportIcon}" Content="Export SVG" ToolTip="Exportar desenho para SVG" Command="{Binding ExportSvgCommand}" Margin="4,0" />
+                    <Button Style="{StaticResource CadToolbarButtonStyle}" Tag="{StaticResource ImportIcon}" Content="Import DXF" ToolTip="Importar desenho DXF" Command="{Binding ImportDxfCommand}" Margin="2,2" />
+                    <Button Style="{StaticResource CadToolbarButtonStyle}" Tag="{StaticResource ExportIcon}" Content="Export DXF" ToolTip="Exportar desenho para DXF" Command="{Binding ExportDxfCommand}" Margin="2,2" />
+                    <Button Style="{StaticResource CadToolbarButtonStyle}" Tag="{StaticResource ExportIcon}" Content="Export SVG" ToolTip="Exportar desenho para SVG" Command="{Binding ExportSvgCommand}" Margin="2,2" />
                     <Separator Background="#334155" Margin="6,2" />
-                    <Button Style="{StaticResource CadToolbarButtonStyle}" Tag="{StaticResource SampleIcon}" Content="Sample" Command="{Binding LoadSampleDrawingCommand}" ToolTip="Carregar desenho de exemplo" Margin="4,0" />
+                    <Button Style="{StaticResource CadToolbarButtonStyle}" Tag="{StaticResource SampleIcon}" Content="Exemplo" Command="{Binding LoadSampleDrawingCommand}" ToolTip="Carregar desenho de exemplo" Margin="2,2" />
                     <Separator Background="#334155" Margin="6,2" />
-                    <Button Style="{StaticResource CadToolbarButtonStyle}" Tag="{StaticResource UndoIcon}" Content="Undo" Command="{Binding UndoCommand}" ToolTip="Desfazer (Ctrl+Z)" Margin="4,0" />
-                    <Button Style="{StaticResource CadToolbarButtonStyle}" Tag="{StaticResource RedoIcon}" Content="Redo" Command="{Binding RedoCommand}" ToolTip="Refazer (Ctrl+Y)" Margin="4,0" />
+                    <Button Style="{StaticResource CadToolbarButtonStyle}" Tag="{StaticResource UndoIcon}" Content="Desfazer" Command="{Binding UndoCommand}" ToolTip="Desfazer (Ctrl+Z)" Margin="2,2" />
+                    <Button Style="{StaticResource CadToolbarButtonStyle}" Tag="{StaticResource RedoIcon}" Content="Refazer" Command="{Binding RedoCommand}" ToolTip="Refazer (Ctrl+Y)" Margin="2,2" />
                     <Separator Background="#334155" Margin="6,2" />
-                    <Button Style="{StaticResource CadToolbarButtonStyle}" Tag="{StaticResource ZoomExtentsIcon}" Content="Enquadrar" Command="{Binding ZoomExtentsCommand}" ToolTip="Ajustar zoom para todos os elementos (Zoom Extents)" Margin="4,0" />
-                    <Button Style="{StaticResource CadToolbarButtonStyle}" Tag="{StaticResource ResetViewIcon}" Content="Resetar Visão" Command="{Binding ResetViewCommand}" ToolTip="Redefinir centro e zoom inicial" Margin="4,0" />
+                    <Button Style="{StaticResource CadToolbarButtonStyle}" Tag="{StaticResource ZoomExtentsIcon}" Content="Enquadrar" Command="{Binding ZoomExtentsCommand}" ToolTip="Ajustar zoom para todos os elementos (Zoom Extents)" Margin="2,2" />
+                    <Button Style="{StaticResource CadToolbarButtonStyle}" Tag="{StaticResource ResetViewIcon}" Content="Vista inicial" Command="{Binding ResetViewCommand}" ToolTip="Redefinir centro e zoom inicial" Margin="2,2" />
                     <Separator Background="#334155" Margin="6,2" />
-                    <Button Style="{StaticResource CadToolbarButtonStyle}" Tag="{StaticResource DeleteIcon}" Content="Excluir" Command="{Binding DeleteSelectedCommand}" ToolTip="Excluir entidades selecionadas (Del)" Margin="4,0" />
-                    <Button Style="{StaticResource CadToolbarButtonStyle}" Tag="{StaticResource ClearIcon}" Content="Limpar" Command="{Binding ClearDrawingCommand}" ToolTip="Limpar todo o desenho" Margin="4,0" />
-                </StackPanel>
+                    <Button Style="{StaticResource CadToolbarButtonStyle}" Tag="{StaticResource DeleteIcon}" Content="Excluir seleção" Command="{Binding DeleteSelectedCommand}" ToolTip="Excluir entidades selecionadas (Del)" Margin="2,2" />
+                    <Button Style="{StaticResource CadToolbarButtonStyle}" Tag="{StaticResource ClearIcon}" Content="Apagar tudo…" Command="{Binding ClearDrawingCommand}" ToolTip="Limpar todo o desenho" Margin="2,2" />
+                </WrapPanel>
             </DockPanel>
         </Border>
 
         <!-- Bottom Technical Status Bar -->
         <Border DockPanel.Dock="Bottom" Background="#1E293B" BorderBrush="#334155" BorderThickness="0,1,0,0" Padding="8,4">
-            <DockPanel LastChildFill="True">
-                <StackPanel Orientation="Horizontal" DockPanel.Dock="Left" VerticalAlignment="Center">
+            <WrapPanel>
+                <StackPanel Orientation="Horizontal"  VerticalAlignment="Center" Margin="0,2">
                     <TextBlock Text="X: " Foreground="#94A3B8" FontFamily="Consolas" FontSize="11" />
                     <TextBlock Text="{Binding MouseWorldX, StringFormat={}{0:F3} m}" Foreground="#F8FAFC" FontFamily="Consolas" FontSize="11" Width="75" />
                     <TextBlock Text="Y: " Foreground="#94A3B8" FontFamily="Consolas" FontSize="11" Margin="6,0,0,0" />
@@ -83,7 +84,7 @@
                     <TextBlock Text="{Binding SelectedCount, StringFormat={}{0} item(s)}" Foreground="#F8FAFC" FontSize="11" Margin="0,0,12,0" />
                 </StackPanel>
 
-                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                <StackPanel Orientation="Horizontal"  VerticalAlignment="Center" Margin="0,2">
                     <Border Background="#0F172A" BorderBrush="#334155" BorderThickness="1" CornerRadius="3" Padding="6,2" Margin="3,0">
                         <TextBlock Text="{Binding IsOrthoEnabled, StringFormat={}ORTHO (F8): {0}}"
                                    Foreground="#38BDF8" FontSize="10" FontWeight="SemiBold" />
@@ -99,7 +100,7 @@
                     <Separator Background="#334155" Margin="6,2" />
                     <TextBlock Text="{Binding ZoomLevel, StringFormat={}Zoom: {0:F1}x}" Foreground="#94A3B8" FontSize="11" VerticalAlignment="Center" Margin="4,0" />
                 </StackPanel>
-            </DockPanel>
+            </WrapPanel>
         </Border>
 
         <!-- Commands from the user and MCP share the open drawing. -->
@@ -123,13 +124,20 @@
         </Border>
 
         <!-- Left Tool Rail -->
-        <Border DockPanel.Dock="Left" Background="#1E293B" BorderBrush="#334155" BorderThickness="0,0,1,0" Width="64">
+        <Border DockPanel.Dock="Left" Background="#1E293B" BorderBrush="#334155" BorderThickness="0,0,1,0" Width="70">
             <controls:CadToolRail />
         </Border>
 
         <!-- Right Layers Inspector -->
-        <Border DockPanel.Dock="Right" Background="#1E293B" BorderBrush="#334155" BorderThickness="1,0,0,0" Width="200">
-            <DockPanel Margin="6">
+        <Border DockPanel.Dock="Right" Background="#1E293B" BorderBrush="#334155" BorderThickness="1,0,0,0">
+            <Expander ExpandDirection="Left" IsExpanded="True" Foreground="#CBD5E1"
+                      ToolTip="Expandir ou recolher camadas">
+                <Expander.Header>
+                    <TextBlock Text="Camadas" Margin="2,6" FontWeight="SemiBold">
+                        <TextBlock.LayoutTransform><RotateTransform Angle="-90" /></TextBlock.LayoutTransform>
+                    </TextBlock>
+                </Expander.Header>
+            <DockPanel Margin="6" Width="180">
                 <DockPanel DockPanel.Dock="Top" Margin="4,4,4,8">
                     <Button DockPanel.Dock="Right" Style="{StaticResource CadToolbarButtonStyle}" Content="👁 Todas" Command="{Binding ShowAllLayersCommand}" ToolTip="Tornar todas as camadas visíveis" Margin="4,0,0,0" Padding="6,2" FontSize="10" />
                     <TextBlock Text="LAYERS" Foreground="#94A3B8" FontSize="11" FontWeight="Bold" VerticalAlignment="Center" />
@@ -145,6 +153,7 @@
                         </TextBox.InputBindings>
                     </TextBox>
                 </DockPanel>
+                <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
                 <ItemsControl ItemsSource="{Binding Layers}">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
@@ -154,13 +163,15 @@
                                     <RadioButton IsChecked="{Binding IsActive, Mode=TwoWay}" GroupName="ActiveLayer" ToolTip="Definir como camada ativa para novos desenhos" VerticalAlignment="Center" Margin="0,0,6,0" />
                                     <Border Width="12" Height="12" CornerRadius="2" Margin="0,0,6,0" VerticalAlignment="Center"
                                             Background="{Binding ColorHex}" BorderBrush="#94A3B8" BorderThickness="1" />
-                                    <TextBlock Text="{Binding Name}" Foreground="#F8FAFC" FontSize="11" VerticalAlignment="Center" />
+                                    <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis" ToolTip="{Binding Name}" Foreground="#F8FAFC" FontSize="11" VerticalAlignment="Center" />
                                 </DockPanel>
                             </Border>
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
+                </ScrollViewer>
             </DockPanel>
+            </Expander>
         </Border>
 
         <!-- Main CAD Viewport -->

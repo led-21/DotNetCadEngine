@@ -24,7 +24,7 @@
     </UserControl.Resources>
     <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
         <StackPanel Orientation="Vertical" Margin="4" HorizontalAlignment="Center">
-        <TextBlock Text="DRAW" Foreground="#94A3B8" FontSize="10" FontWeight="Bold" Margin="4,4,4,6" HorizontalAlignment="Center" />
+        <TextBlock Text="CRIAR" Foreground="#94A3B8" FontSize="10" FontWeight="Bold" Margin="4,4,4,6" HorizontalAlignment="Center" />
         <Button Style="{StaticResource CadIconButtonStyle}" Tag="{StaticResource SelectIcon}" ToolTip="Selecionar entidades (Esc)" AutomationProperties.Name="Selecionar" Margin="2" Command="{Binding SetToolCommand}" CommandParameter="{x:Static editor:CadToolType.Select}" />
         <Button Style="{StaticResource CadIconButtonStyle}" Tag="{StaticResource PanIcon}" ToolTip="Mover tela (Pan)" AutomationProperties.Name="Pan" Margin="2" Command="{Binding SetToolCommand}" CommandParameter="{x:Static editor:CadToolType.Pan}" />
         <Button Style="{StaticResource CadIconButtonStyle}" Tag="{StaticResource LineIcon}" ToolTip="Desenhar linha: clique no início e no fim" AutomationProperties.Name="Linha" Margin="2" Command="{Binding SetToolCommand}" CommandParameter="{x:Static editor:CadToolType.Line}" />
@@ -35,7 +35,7 @@
         <Button Style="{StaticResource CadIconButtonStyle}" Tag="{StaticResource TextIcon}" ToolTip="Inserir anotação de texto na coordenada atual" AutomationProperties.Name="Texto" Margin="2" Command="{Binding AddTextPromptCommand}" />
         <Button Style="{StaticResource CadIconButtonStyle}" Tag="{StaticResource DimensionIcon}" ToolTip="Adicionar cota linear: escolha dois pontos e a posição" AutomationProperties.Name="Cota linear" Margin="2" Command="{Binding SetToolCommand}" CommandParameter="{x:Static editor:CadToolType.Dimension}" />
         <Separator Background="#334155" Margin="4,8" />
-        <TextBlock Text="MODIFY" Foreground="#94A3B8" FontSize="10" FontWeight="Bold" Margin="4,0,4,6" HorizontalAlignment="Center" />
+        <TextBlock Text="EDITAR" Foreground="#94A3B8" FontSize="10" FontWeight="Bold" Margin="4,0,4,6" HorizontalAlignment="Center" />
         <Button Style="{StaticResource CadIconButtonStyle}" Tag="{StaticResource MoveIcon}" ToolTip="Mover entidades selecionadas (+1m X)" AutomationProperties.Name="Mover" Margin="2" Command="{Binding MoveSelectedCommand}" />
         <Button Style="{StaticResource CadIconButtonStyle}" Tag="{StaticResource CopyIcon}" ToolTip="Copiar entidades selecionadas (+1m)" AutomationProperties.Name="Copiar" Margin="2" Command="{Binding CopySelectedCommand}" />
         <Button Style="{StaticResource CadIconButtonStyle}" Tag="{StaticResource RotateIcon}" ToolTip="Rotacionar entidades selecionadas (90° centro)" AutomationProperties.Name="Rotacionar" Margin="2" Command="{Binding RotateSelectedCommand}" />
