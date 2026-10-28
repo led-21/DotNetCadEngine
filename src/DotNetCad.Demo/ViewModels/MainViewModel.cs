@@ -29,6 +29,8 @@ public sealed class MainViewModel : ObservableObject
     private bool _hasUnsavedChanges;
     private bool _suppressDirtyTracking;
 
+    public MutuaConectaViewModel Mutua { get; }
+
     public Func<bool>? ZoomExtentsHandler { get; set; }
     public Action? ResetViewHandler { get; set; }
 
@@ -192,6 +194,8 @@ public sealed class MainViewModel : ObservableObject
             RunCadCommand(input);
         });
 
+        Mutua = new MutuaConectaViewModel(this);
+
         LoadSampleDrawing();
     }
 
@@ -254,7 +258,28 @@ public sealed class MainViewModel : ObservableObject
     private CadCommandResult? RunApplicationCommand(string input)
     {
         if (input.Equals("HELP", StringComparison.OrdinalIgnoreCase))
-            return new(true, CadCommandProcessor.Help + " | ZOOM EXTENTS | SAVE [path.cad] | OPEN [DISCARD] path.cad|path.dxf | NEW [DISCARD]");
+            return new(true, CadCommandProcessor.Help + " | ZOOM EXTENTS | SAVE [path.cad] | OPEN [DISCARD] path.cad|path.dxf | NEW [DISCARD] | MUTUA STATUS | MUTUA SYNC | MUTUA MATCHES | MUTUA SILOS");
+        if (input.Equals("MUTUA", StringComparison.OrdinalIgnoreCase) ||
+            input.Equals("MUTUA STATUS", StringComparison.OrdinalIgnoreCase))
+        {
+            var layers = string.Join(", ", Document.Layers.Select(l => l.Name));
+            return new(true, $"Mútua Conecta: {Mutua.ConnectionStatusText} | Projeto: {Mutua.LinkedProjectCode} ({Mutua.LinkedProjectTitle}) | Camadas CAD: {layers}");
+        }
+        if (input.Equals("MUTUA SYNC", StringComparison.OrdinalIgnoreCase))
+        {
+            _ = Mutua.SyncCadDocumentAsync();
+            return new(true, "Sincronização CAD/SVG iniciada com Mútua Conecta.");
+        }
+        if (input.Equals("MUTUA MATCHES", StringComparison.OrdinalIgnoreCase))
+        {
+            _ = Mutua.FindSpecialistsAsync();
+            return new(true, "Consulta determinística de especialistas iniciada.");
+        }
+        if (input.Equals("MUTUA SILOS", StringComparison.OrdinalIgnoreCase))
+        {
+            Mutua.LoadDemoSilosDrawing();
+            return new(true, "Planta Demo Silos carregada.", DrawingChanged: true, LayersChanged: true);
+        }
         if (input.Equals("ZOOM EXTENTS", StringComparison.OrdinalIgnoreCase))
             return ZoomExtentsHandler?.Invoke() == true
                 ? new(true, "Visible drawing fitted to the viewport.")

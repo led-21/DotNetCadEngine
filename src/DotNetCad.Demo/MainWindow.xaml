@@ -7,11 +7,12 @@
         xmlns:controls="clr-namespace:DotNetCad.Demo.Controls"
         mc:Ignorable="d"
         Title="DotNetCadEngine — 2D CAD Playground"
-        Height="720" Width="1100"
+        Height="740" Width="1280"
         WindowStartupLocation="CenterScreen"
         Background="#0F172A">
 
     <Window.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVis" />
         <Geometry x:Key="NewIcon">M 5,2 L 15,2 L 20,7 L 20,22 L 5,22 Z M 15,2 L 15,7 L 20,7</Geometry>
         <Geometry x:Key="OpenIcon">M 3,8 L 3,5 L 10,5 L 12,8 L 21,8 L 19,20 L 3,20 L 5,11 L 22,11</Geometry>
         <Geometry x:Key="SaveIcon">M 4,3 L 17,3 L 21,7 L 21,21 L 4,21 Z M 7,3 L 7,10 L 17,10 L 17,3 M 8,21 L 8,14 L 17,14 L 17,21</Geometry>
@@ -41,6 +42,13 @@
 
                 <!-- Actions -->
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                    <Button Style="{StaticResource CadToolbarButtonStyle}" Command="{Binding Mutua.TogglePanelCommand}" ToolTip="Alternar Painel Mútua Conecta" Margin="4,0" Background="#16465E" BorderBrush="#38BDF8">
+                        <StackPanel Orientation="Horizontal">
+                            <Border Width="8" Height="8" CornerRadius="4" Margin="0,0,6,0" Background="#10B981" VerticalAlignment="Center" />
+                            <TextBlock Text="Mútua Conecta" FontWeight="Bold" Foreground="#38BDF8" />
+                        </StackPanel>
+                    </Button>
+                    <Separator Background="#334155" Margin="6,2" />
                     <Button Style="{StaticResource CadToolbarButtonStyle}" Tag="{StaticResource NewIcon}" Content="New" ToolTip="Criar desenho vazio" Command="{Binding NewDrawingCommand}" Margin="4,0" />
                     <Button Style="{StaticResource CadToolbarButtonStyle}" Tag="{StaticResource OpenIcon}" Content="Open" ToolTip="Abrir desenho CAD ou DXF" Command="{Binding OpenDrawingCommand}" Margin="4,0" />
                     <Button Style="{StaticResource CadToolbarButtonStyle}" Tag="{StaticResource SaveIcon}" Content="Save" ToolTip="Salvar desenho CAD" Command="{Binding SaveDrawingCommand}" Margin="4,0" />
@@ -115,6 +123,140 @@
         <!-- Left Tool Rail -->
         <Border DockPanel.Dock="Left" Background="#1E293B" BorderBrush="#334155" BorderThickness="0,0,1,0" Width="64">
             <controls:CadToolRail />
+        </Border>
+
+        <!-- Right Mútua Conecta Collaboration Panel (Collapsible) -->
+        <Border DockPanel.Dock="Right" Background="#131F33" BorderBrush="#334155" BorderThickness="1,0,0,0" Width="350"
+                Visibility="{Binding Mutua.IsPanelVisible, Converter={StaticResource BoolToVis}}">
+            <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                <StackPanel Margin="10">
+                    <!-- Panel Header -->
+                    <DockPanel LastChildFill="True" Margin="0,0,0,10">
+                        <Button DockPanel.Dock="Right" Content="✕" Width="24" Height="24"
+                                Background="Transparent" Foreground="#94A3B8" BorderThickness="0"
+                                Command="{Binding Mutua.TogglePanelCommand}" ToolTip="Fechar Painel" Cursor="Hand" />
+                        <StackPanel>
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                <TextBlock Text="MÚTUA" Foreground="#F59E0B" FontWeight="Bold" FontSize="13" />
+                                <TextBlock Text=" CONECTA" Foreground="#38BDF8" FontWeight="Bold" FontSize="13" />
+                                <Border Background="#1E3A8A" CornerRadius="3" Padding="4,1" Margin="6,0,0,0">
+                                    <TextBlock Text="DESKTOP CAD" Foreground="#93C5FD" FontSize="9" FontWeight="Bold" />
+                                </Border>
+                            </StackPanel>
+                            <TextBlock Text="Colaboração Multidisciplinar &amp; IA Local" Foreground="#64748B" FontSize="10" />
+                        </StackPanel>
+                    </DockPanel>
+
+                    <!-- Section: Conexão & Persona -->
+                    <Border Background="#1E293B" BorderBrush="#334155" BorderThickness="1" CornerRadius="4" Padding="8" Margin="0,0,0,8">
+                        <StackPanel>
+                            <DockPanel LastChildFill="True" Margin="0,0,0,6">
+                                <Border DockPanel.Dock="Left" Width="8" Height="8" CornerRadius="4" Margin="0,0,6,0" VerticalAlignment="Center"
+                                        Background="#10B981" />
+                                <TextBlock Text="{Binding Mutua.ConnectionStatusText}" Foreground="#F8FAFC" FontSize="11" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                            </DockPanel>
+                            <TextBlock Text="URL da API:" Foreground="#94A3B8" FontSize="10" Margin="0,0,0,2" />
+                            <TextBox Text="{Binding Mutua.ApiUrl, UpdateSourceTrigger=PropertyChanged}" Background="#0F172A" Foreground="#F8FAFC"
+                                     BorderBrush="#475569" BorderThickness="1" Padding="4,2" FontFamily="Consolas" FontSize="11" Margin="0,0,0,6" />
+                            <UniformGrid Columns="2" Margin="0,0,0,4">
+                                <Button Style="{StaticResource CadButtonStyle}" Content="Login Demo" Command="{Binding Mutua.ConnectAndLoginCommand}"
+                                        ToolTip="Autenticar como Eng. Carlos Mendes (Demo)" Margin="0,0,3,0" Padding="4,3" FontSize="11" />
+                                <Button Style="{StaticResource CadButtonStyle}" Content="Testar Saúde" Command="{Binding Mutua.CheckHealthCommand}"
+                                        ToolTip="Consultar probe de saúde da API" Margin="3,0,0,0" Padding="4,3" FontSize="11" />
+                            </UniformGrid>
+                            <TextBlock Text="{Binding Mutua.AuthenticatedUserTitle}" Foreground="#64748B" FontSize="10" TextTrimming="CharacterEllipsis" />
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Section: Projeto Vinculado (PRJ-2026-001) -->
+                    <Border Background="#1E293B" BorderBrush="#334155" BorderThickness="1" CornerRadius="4" Padding="8" Margin="0,0,0,8">
+                        <StackPanel>
+                            <TextBlock Text="PROJETO VINCULADO" Foreground="#38BDF8" FontSize="10" FontWeight="Bold" Margin="0,0,0,4" />
+                            <TextBlock Text="{Binding Mutua.LinkedProjectCode}" Foreground="#F8FAFC" FontSize="12" FontWeight="Bold" />
+                            <TextBlock Text="{Binding Mutua.LinkedProjectTitle}" Foreground="#CBD5E1" FontSize="11" TextWrapping="Wrap" Margin="0,2,0,6" />
+                            <Border Background="#0F172A" CornerRadius="3" Padding="6,4" BorderBrush="#334155" BorderThickness="1">
+                                <StackPanel>
+                                    <TextBlock Text="Disciplinas Técnicas:" Foreground="#94A3B8" FontSize="10" FontWeight="SemiBold" Margin="0,0,0,2" />
+                                    <TextBlock Text="• ESTRUTURA: Eng. Carlos Mendes (Agr.) &amp; Eng. Marcos Rocha (Civ.)" Foreground="#93C5FD" FontSize="10" />
+                                    <TextBlock Text="• ELETRICA / SPDA: Necessita Especialista (Subestação 300 kVA)" Foreground="#F59E0B" FontSize="10" FontWeight="SemiBold" />
+                                    <TextBlock Text="• DRENAGEM: Canaleta pluvial (Eng. Marcos Rocha)" Foreground="#86EFAC" FontSize="10" />
+                                </StackPanel>
+                            </Border>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Section: Ações Técnicas CAD -->
+                    <Border Background="#1E293B" BorderBrush="#334155" BorderThickness="1" CornerRadius="4" Padding="8" Margin="0,0,0,8">
+                        <StackPanel>
+                            <TextBlock Text="AÇÕES TÉCNICAS CAD" Foreground="#38BDF8" FontSize="10" FontWeight="Bold" Margin="0,0,0,6" />
+                            <Button Style="{StaticResource CadButtonStyle}" Content="Carregar Planta Demo Silos (.cad)"
+                                    Command="{Binding Mutua.LoadDemoSilosDrawingCommand}"
+                                    ToolTip="Popula no CAD as camadas ESTRUTURA, ELETRICA, SPDA e DRENAGEM com silos, moega e subestação"
+                                    Margin="0,0,0,6" Background="#1E3A5F" />
+                            <Button Style="{StaticResource CadButtonStyle}" Content="Sincronizar CAD/SVG com Mútua Conecta"
+                                    Command="{Binding Mutua.SyncCadDocumentCommand}"
+                                    ToolTip="Exporta preview SVG sanitizado, calcula SHA-256 e sincroniza metadados com a plataforma web"
+                                    Background="#065F46" />
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Section: Especialistas Recomendados (Matching) -->
+                    <Border Background="#1E293B" BorderBrush="#334155" BorderThickness="1" CornerRadius="4" Padding="8" Margin="0,0,0,8">
+                        <StackPanel>
+                            <DockPanel LastChildFill="True" Margin="0,0,0,6">
+                                <Button DockPanel.Dock="Right" Style="{StaticResource CadButtonStyle}" Content="Buscar"
+                                        Command="{Binding Mutua.FindSpecialistsCommand}" Padding="6,2" FontSize="10" />
+                                <TextBlock Text="ESPECIALISTAS (SUBESTAÇÃO MT)" Foreground="#38BDF8" FontSize="10" FontWeight="Bold" VerticalAlignment="Center" />
+                            </DockPanel>
+
+                            <ItemsControl ItemsSource="{Binding Mutua.RecommendedSpecialists}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border Background="#0F172A" BorderBrush="#334155" BorderThickness="1" CornerRadius="4" Padding="6" Margin="0,2,0,4">
+                                            <StackPanel>
+                                                <DockPanel LastChildFill="True">
+                                                    <Border DockPanel.Dock="Right" Background="#065F46" CornerRadius="3" Padding="4,1">
+                                                        <TextBlock Text="{Binding Score, StringFormat={}{0}%}" Foreground="#6EE7B7" FontSize="10" FontWeight="Bold" />
+                                                    </Border>
+                                                    <TextBlock Text="{Binding DisplayName}" Foreground="#F8FAFC" FontSize="11" FontWeight="Bold" />
+                                                </DockPanel>
+                                                <TextBlock Text="{Binding Title}" Foreground="#94A3B8" FontSize="10" TextTrimming="CharacterEllipsis" Margin="0,2" />
+                                                <Button Style="{StaticResource CadButtonStyle}" Content="Preparar Convite"
+                                                        Command="{Binding DataContext.Mutua.PrepareDraftFromMatchCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                        CommandParameter="{Binding}"
+                                                        Padding="4,2" FontSize="10" Margin="0,4,0,0" />
+                                            </StackPanel>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Section: Rascunho de Convite Pendente de Confirmação (Safe Human-in-the-Loop) -->
+                    <Border Background="#2A1B0E" BorderBrush="#F59E0B" BorderThickness="1" CornerRadius="4" Padding="8" Margin="0,0,0,8"
+                            Visibility="{Binding Mutua.IsDraftPendingConfirmation, Converter={StaticResource BoolToVis}}">
+                        <StackPanel>
+                            <TextBlock Text="RASCUNHO PENDENTE DE CONFIRMAÇÃO" Foreground="#F59E0B" FontSize="10" FontWeight="Bold" Margin="0,0,0,4" />
+                            <TextBlock Text="{Binding Mutua.DraftRecipientName, StringFormat={}Destinatário: {0}}" Foreground="#F8FAFC" FontSize="11" FontWeight="SemiBold" />
+                            <TextBlock Text="{Binding Mutua.DraftHonorarium, StringFormat={}Honorários: {0:C2}}" Foreground="#F8FAFC" FontSize="11" Margin="0,2" />
+                            <TextBox Text="{Binding Mutua.DraftMessage, UpdateSourceTrigger=PropertyChanged}" Background="#0F172A" Foreground="#F8FAFC"
+                                     BorderBrush="#475569" BorderThickness="1" Padding="4" TextWrapping="Wrap" Height="50" FontSize="10" Margin="0,4,0,6" />
+                            <UniformGrid Columns="2">
+                                <Button Style="{StaticResource CadButtonStyle}" Content="Confirmar e Enviar"
+                                        Command="{Binding Mutua.ConfirmSendInviteCommand}"
+                                        Background="#047857" Foreground="#FFFFFF" FontWeight="Bold" FontSize="10" Margin="0,0,3,0" />
+                                <Button Style="{StaticResource CadButtonStyle}" Content="Cancelar"
+                                        Command="{Binding Mutua.CancelDraftCommand}"
+                                        Background="#334155" FontSize="10" Margin="3,0,0,0" />
+                            </UniformGrid>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Status Message Box -->
+                    <TextBlock Text="{Binding Mutua.StatusMessage}" Foreground="#94A3B8" FontSize="10" TextWrapping="Wrap" Margin="2,4" />
+                </StackPanel>
+            </ScrollViewer>
         </Border>
 
         <!-- Right Layers Inspector -->
