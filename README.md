@@ -159,6 +159,14 @@ flowchart LR
 
 The core includes line, polyline, rectangle, circle, arc, and dimension entities. It also contains calculations for intersections, offsets, fillets, trimming, extension, transforms, polygon measurements, and coordinate parsing. Keeping these operations in the core makes them usable without launching the desktop app.
 
+## Technical documentation
+
+Detailed technical documentation and engineering specifications:
+
+- [CAD Architecture & Technical Decisions](docs/CAD-ARCHITECTURE-DECISIONS.md): Unified layer rules, console & viewport interaction lifecycle, numeric tolerances, and AI transactional batch processing.
+- [DXF Compatibility Matrix](docs/DXF-COMPATIBILITY-MATRIX.md): Formal Autodesk DXF AC1009 (R12) and AC1015 (2000) import/export compliance.
+- [Packaging & Installer Strategy](docs/INSTALLER.md): Inno Setup 6 architecture, self-contained x64 deployment, and vector splash screen.
+
 ## File formats and current scope
 
 The DXF importer supports a focused subset of ASCII entities: `LINE`, `CIRCLE`, `ARC`, `LWPOLYLINE`, and single-line `TEXT`, plus layer information. The exporter writes those shapes and represents rectangles as polylines and dimensions as basic line/text entities. Colors map to a small AutoCAD Color Index palette, and coordinates are rounded during export. This is a practical interchange example, not a full DXF implementation or a guarantee of lossless round trips with arbitrary CAD files.
@@ -169,7 +177,7 @@ Interactive graphical tools with real-time preview and dedicated toolbar control
 
 ## CI
 
-O projeto é compilado e testado automaticamente via GitHub Actions a cada push ou pull request para a branch `main`:
+O projeto é validado sob demanda via GitHub Actions (`workflow_dispatch`):
 - O build completo e os testes da solução (incluindo a interface WPF) são validados no Windows (`windows-latest`).
 - O `DotNetCad.Core` e o `DotNetCad.Infrastructure` são validados de forma desacoplada no Linux (`ubuntu-latest`).
 
