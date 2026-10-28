@@ -60,6 +60,12 @@ public static class GeometryValidator
         return GeometryValidationResult.Success();
     }
 
+    public static GeometryValidationResult ValidateSegment(Point2D p1, Point2D p2, GeometricTolerancePolicy policy)
+    {
+        ArgumentNullException.ThrowIfNull(policy);
+        return ValidateSegment(p1, p2, policy.MinEntityDimension);
+    }
+
     public static GeometryValidationResult ValidateDimensions(double length, double width, double minDimension = 0.05)
     {
         if (double.IsNaN(length) || double.IsInfinity(length) || length < minDimension)
@@ -79,6 +85,12 @@ public static class GeometryValidator
         return GeometryValidationResult.Success();
     }
 
+    public static GeometryValidationResult ValidateDimensions(double length, double width, GeometricTolerancePolicy policy)
+    {
+        ArgumentNullException.ThrowIfNull(policy);
+        return ValidateDimensions(length, width, policy.MinEntityDimension);
+    }
+
     public static GeometryValidationResult ValidateCircle(Point2D center, double radius, double minRadius = 0.05)
     {
         var vCenter = ValidatePoint(center);
@@ -94,8 +106,41 @@ public static class GeometryValidator
         return GeometryValidationResult.Success();
     }
 
-    public static GeometryValidationResult ValidatePolygon(IReadOnlyList<Point2D>? vertices, double minArea = 0.01)
+    public static GeometryValidationResult ValidateCircle(Point2D center, double radius, GeometricTolerancePolicy policy)
     {
+        ArgumentNullException.ThrowIfNull(policy);
+        return ValidateCircle(center, radius, policy.MinEntityDimension);
+    }
+
+    public static GeometryValidationResult ValidateArc(Point2D center, double radius, double startAngleDegrees, double endAngleDegrees, GeometricTolerancePolicy? policy = null)
+    {
+        policy ??= GeometricTolerancePolicy.Default;
+        var vCircle = ValidateCircle(center, radius, policy.MinEntityDimension);
+        if (!vCircle.IsValid) return vCircle;
+
+        if (!double.IsFinite(startAngleDegrees) || !double.IsFinite(endAngleDegrees))
+        {
+            return GeometryValidationResult.Failure(
+                "Arc angles must be finite numbers.",
+                "Specify valid start and end angles in degrees.");
+        }
+
+        var sweep = (endAngleDegrees - startAngleDegrees) % 360.0;
+        if (sweep < 0) sweep += 360.0;
+        if (sweep < policy.MinArcSweepDegrees || Math.Abs(sweep - 360.0) < policy.MinArcSweepDegrees)
+        {
+            return GeometryValidationResult.Failure(
+                $"Arc sweep ({sweep:F3}°) must be between {policy.MinArcSweepDegrees}° and {360.0 - policy.MinArcSweepDegrees}°.",
+                "Use a circle for 360° or widen the angular sweep.");
+        }
+
+        return GeometryValidationResult.Success();
+    }
+
+    public static GeometryValidationResult ValidatePolygon(IReadOnlyList<Point2D>? vertices, double minArea = 0.01, GeometricTolerancePolicy? policy = null)
+    {
+        var vertexEps = policy?.PointCoincidenceTolerance ?? DefaultEpsilon;
+
         if (vertices == null || vertices.Count < 3)
         {
             return GeometryValidationResult.Failure(
@@ -109,7 +154,7 @@ public static class GeometryValidator
             if (!vPt.IsValid) return vPt;
 
             var next = vertices[(i + 1) % vertices.Count];
-            if (vertices[i].DistanceTo(next) < DefaultEpsilon)
+            if (vertices[i].DistanceTo(next) < vertexEps)
             {
                 return GeometryValidationResult.Failure(
                     $"Duplicate consecutive vertices detected at index {i}.",

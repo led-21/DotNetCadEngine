@@ -1,8 +1,10 @@
 using System.Globalization;
+using DotNetCad.Core.Audit;
 using DotNetCad.Core.Entities;
 using DotNetCad.Core.Geometry;
 using DotNetCad.Core.History;
 using DotNetCad.Core.History.Actions;
+using DotNetCad.Core.Queries;
 
 namespace DotNetCad.Core.Editor;
 
@@ -25,13 +27,21 @@ public static class CadCommandProcessor
 
         try
         {
-            if(command == "LAYER") return LayerCommand(document,history,parts);
-            if(command is "LINE" or "CIRCLE" or "RECT" or "ARC" or "POLYLINE" or "TEXT" or "DIM") CadLayerOperations.RequireUsable(document,document.ActiveLayer);
-            if(command == "CLEAR") CadLayerOperations.RequireEditable(document,document.Entities);
-            if(command is "MOVE" or "COPY" or "ROTATE" or "MIRROR" or "OFFSET" or "DELETE" or "BREAK" or "TRIM" or "EXTEND")
+            if (command == "LAYER") return LayerCommand(document, history, parts);
+            if (command == "BATCH") return BatchCommand(document, history, input);
+            if (command == "STAGE") return StageCommand(document, history, input, parts);
+            if (command == "COMMIT") return CommitStagedCommand(document, history, parts);
+            if (command == "DISCARD") return DiscardStagedCommand(document, parts);
+            if (command == "AUDIT") return AuditCommand(document, parts);
+            if (command == "QUERY") return QueryCommand(document, parts);
+            if (command == "CONFLICTS") return ConflictsCommand(document, parts);
+            if (command == "TOPOLOGY") return TopologyCommand(document);
+            if (command is "LINE" or "CIRCLE" or "RECT" or "ARC" or "POLYLINE" or "TEXT" or "DIM") CadLayerOperations.RequireUsable(document, document.ActiveLayer);
+            if (command == "CLEAR") CadLayerOperations.RequireEditable(document, document.Entities);
+            if (command is "MOVE" or "COPY" or "ROTATE" or "MIRROR" or "OFFSET" or "DELETE" or "BREAK" or "TRIM" or "EXTEND")
             {
-                if(parts.Length>1 && Guid.TryParse(parts[1],out var editId))
-                    CadLayerOperations.RequireEditable(document,document.Entities.Where(e=>e.Id==editId));
+                if (parts.Length > 1 && Guid.TryParse(parts[1], out var editId))
+                    CadLayerOperations.RequireEditable(document, document.Entities.Where(e => e.Id == editId));
             }
             switch (command)
             {
@@ -74,14 +84,22 @@ public static class CadCommandProcessor
                 case "POLYLINE" when parts.Length >= 3:
                 {
                     var vertices = new List<Point2D>();
-                    foreach (var token in parts.Skip(1))
+                    var isClosed = false;
+                    var tokens = parts.Skip(1).ToList();
+                    if (tokens.Count > 0 && tokens[^1].Equals("CLOSED", StringComparison.OrdinalIgnoreCase))
+                    {
+                        isClosed = true;
+                        tokens.RemoveAt(tokens.Count - 1);
+                    }
+                    foreach (var token in tokens)
                     {
                         if (!Point(token, out var vertex)) return InvalidPoint();
                         vertices.Add(vertex);
                     }
+                    if (vertices.Count < 2) return new(false, "Polyline requires at least 2 points.");
                     if (vertices.Zip(vertices.Skip(1)).Any(pair => pair.First.DistanceTo(pair.Second) < 0.01))
                         return new(false, "Adjacent polyline points must be distinct.");
-                    return Add(new CadPolyline(vertices, false, document.ActiveLayer, ActiveColor(document)), document, history);
+                    return Add(new CadPolyline(vertices, isClosed, document.ActiveLayer, ActiveColor(document)), document, history);
                 }
                 case "TEXT" when parts.Length >= 4:
                 {
@@ -151,46 +169,72 @@ public static class CadCommandProcessor
                 }
                 case "TRIM" when parts.Length == 4:
                 {
-                    if (!TryLine(document, parts[1], out var line, out var error)) return new(false, error);
+                    if (!TryEntity(document, parts[1], out var targetEntity, out var error)) return new(false, error);
                     if (!TryEntity(document, parts[2], out var boundary, out error)) return new(false, error);
-                    if (line!.Id == boundary!.Id) return new(false, "Choose a different boundary.");
+                    if (targetEntity!.Id == boundary!.Id) return new(false, "Choose a different boundary.");
                     if (!Point(parts[3], out var pick)) return InvalidPoint();
-                    if (!TryPositionOnLine(line, pick, out _)) return new(false, "Pick point must lie on the line to trim.");
-                    var trimmed = boundary is CadLine boundaryLine
-                        ? CadConstructionMath.TrimSegment(line.StartPoint, line.EndPoint, boundaryLine.StartPoint, boundaryLine.EndPoint, pick)
-                        : CadConstructionMath.TrimSegmentWithEntity(line.StartPoint, line.EndPoint, boundary!, pick);
-                    if (trimmed == null) return new(false, "The line and boundary do not intersect as segments.");
-                    if (trimmed.Value.Start.DistanceTo(line.StartPoint) < 0.01 &&
-                        trimmed.Value.End.DistanceTo(line.EndPoint) < 0.01)
-                        return new(false, "The boundary does not shorten this line.");
-                    var validation = GeometryValidator.ValidateSegment(trimmed.Value.Start, trimmed.Value.End);
-                    if (!validation.IsValid) return new(false, validation.ErrorMessage!);
-                    return ReplaceLine(document, history, line,
-                        [CopyLine(line, trimmed.Value.Start, trimmed.Value.End)], "Trim line");
+                    if (targetEntity is CadLine line)
+                    {
+                        if (!TryPositionOnLine(line, pick, out _)) return new(false, "Pick point must lie on the line to trim.");
+                        var trimmed = boundary is CadLine boundaryLine
+                            ? CadConstructionMath.TrimSegment(line.StartPoint, line.EndPoint, boundaryLine.StartPoint, boundaryLine.EndPoint, pick)
+                            : CadConstructionMath.TrimSegmentWithEntity(line.StartPoint, line.EndPoint, boundary!, pick);
+                        if (trimmed == null) return new(false, "The line and boundary do not intersect as segments.");
+                        if (trimmed.Value.Start.DistanceTo(line.StartPoint) < 0.01 &&
+                            trimmed.Value.End.DistanceTo(line.EndPoint) < 0.01)
+                            return new(false, "The boundary does not shorten this line.");
+                        var validation = GeometryValidator.ValidateSegment(trimmed.Value.Start, trimmed.Value.End);
+                        if (!validation.IsValid) return new(false, validation.ErrorMessage!);
+                        return ReplaceLine(document, history, line,
+                            [CopyLine(line, trimmed.Value.Start, trimmed.Value.End)], "Trim line");
+                    }
+                    else
+                    {
+                        var res = CadTrimExtendEngine.Trim(targetEntity, [boundary!], pick);
+                        if (res == null) return new(false, "Entity could not be trimmed at the specified point.");
+                        var actions = new List<IUndoableAction> { new DeleteEntityAction(document, targetEntity) };
+                        foreach (var ent in res.RemainingEntities) actions.Add(new AddEntityAction(document, ent));
+                        history.ExecuteAction(new CompositeUndoableAction(actions, $"Trim {targetEntity.EntityType}"));
+                        return new(true, $"Trimmed {targetEntity.EntityType}.", true);
+                    }
                 }
                 case "EXTEND" when parts.Length == 4:
                 {
-                    if (!TryLine(document, parts[1], out var line, out var error)) return new(false, error);
+                    if (!TryEntity(document, parts[1], out var targetEntity, out var error)) return new(false, error);
                     if (!TryEntity(document, parts[2], out var boundary, out error)) return new(false, error);
-                    if (line!.Id == boundary!.Id) return new(false, "Choose a different boundary.");
+                    if (targetEntity!.Id == boundary!.Id) return new(false, "Choose a different boundary.");
                     var extendStart = parts[3].Equals("START", StringComparison.OrdinalIgnoreCase);
                     if (!extendStart && !parts[3].Equals("END", StringComparison.OrdinalIgnoreCase))
                         return new(false, "Use START or END to select the endpoint to extend.");
-                    var extended = boundary is CadLine boundaryLine
-                        ? (extendStart
-                            ? CadConstructionMath.ExtendSegment(line.EndPoint, line.StartPoint, boundaryLine.StartPoint, boundaryLine.EndPoint)
-                            : CadConstructionMath.ExtendSegment(line.StartPoint, line.EndPoint, boundaryLine.StartPoint, boundaryLine.EndPoint))
-                        : (extendStart
-                            ? CadConstructionMath.ExtendSegmentToEntity(line.EndPoint, line.StartPoint, boundary!)
-                            : CadConstructionMath.ExtendSegmentToEntity(line.StartPoint, line.EndPoint, boundary!));
-                    if (extended == null) return new(false, "The selected endpoint cannot reach the boundary segment.");
-                    var newStart = extendStart ? extended.Value.End : line.StartPoint;
-                    var newEnd = extendStart ? line.EndPoint : extended.Value.End;
-                    if (line.StartPoint.DistanceTo(newStart) < 0.01 && line.EndPoint.DistanceTo(newEnd) < 0.01)
-                        return new(false, "The line already touches the boundary.");
-                    var validation = GeometryValidator.ValidateSegment(newStart, newEnd);
-                    if (!validation.IsValid) return new(false, validation.ErrorMessage!);
-                    return ReplaceLine(document, history, line, [CopyLine(line, newStart, newEnd)], "Extend line");
+                    if (targetEntity is CadLine line)
+                    {
+                        var extended = boundary is CadLine boundaryLine
+                            ? (extendStart
+                                ? CadConstructionMath.ExtendSegment(line.EndPoint, line.StartPoint, boundaryLine.StartPoint, boundaryLine.EndPoint)
+                                : CadConstructionMath.ExtendSegment(line.StartPoint, line.EndPoint, boundaryLine.StartPoint, boundaryLine.EndPoint))
+                            : (extendStart
+                                ? CadConstructionMath.ExtendSegmentToEntity(line.EndPoint, line.StartPoint, boundary!)
+                                : CadConstructionMath.ExtendSegmentToEntity(line.StartPoint, line.EndPoint, boundary!));
+                        if (extended == null) return new(false, "The selected endpoint cannot reach the boundary segment.");
+                        var newStart = extendStart ? extended.Value.End : line.StartPoint;
+                        var newEnd = extendStart ? line.EndPoint : extended.Value.End;
+                        if (line.StartPoint.DistanceTo(newStart) < 0.01 && line.EndPoint.DistanceTo(newEnd) < 0.01)
+                            return new(false, "The line already touches the boundary.");
+                        var validation = GeometryValidator.ValidateSegment(newStart, newEnd);
+                        if (!validation.IsValid) return new(false, validation.ErrorMessage!);
+                        return ReplaceLine(document, history, line, [CopyLine(line, newStart, newEnd)], "Extend line");
+                    }
+                    else if (targetEntity is CadArc arc)
+                    {
+                        var res = CadTrimExtendEngine.ExtendEndpoint(arc, [boundary!], extendStart);
+                        if (res == null) return new(false, "Arc could not reach boundary.");
+                        history.ExecuteAction(new ReplaceEntityAction(document, arc, res.ExtendedEntity, "Extend arc"));
+                        return new(true, "Extended arc.", true);
+                    }
+                    else
+                    {
+                        return new(false, $"Entity type '{targetEntity.EntityType}' does not support EXTEND.");
+                    }
                 }
                 case "BREAK" when parts.Length is 3 or 4:
                 {
@@ -364,36 +408,186 @@ public static class CadCommandProcessor
 
     private static CadCommandResult LayerCommand(CadDocument d, UndoRedoManager h, string[] p)
     {
-        if(p.Length==2 && p[1].Equals("SHOWALL",StringComparison.OrdinalIgnoreCase))
+        if (p.Length == 2 && p[1].Equals("SHOWALL", StringComparison.OrdinalIgnoreCase))
         {
-            var changes=d.Layers.Where(l=>!l.IsVisible).Select(l=>(IUndoableAction)new SetLayerVisibilityAction(d,l,true,d.ActiveLayer)).ToArray();
-            if(changes.Length==0)return new(true,"Todas já visíveis.");
-            h.ExecuteAction(new CompositeUndoableAction(changes,"Mostrar todas as camadas"));return new(true,"Todas visíveis.",true,true);
+            var changes = d.Layers.Where(l => !l.IsVisible).Select(l => (IUndoableAction)new SetLayerVisibilityAction(d, l, true, d.ActiveLayer)).ToArray();
+            if (changes.Length == 0) return new(true, "Todas já visíveis.");
+            h.ExecuteAction(new CompositeUndoableAction(changes, "Mostrar todas as camadas")); return new(true, "Todas visíveis.", true, true);
         }
-        if(p.Length==2) return CadLayerOperations.Execute(d,h,"ENSURE",p[1]);
-        if(p.Length>=3)
+        if (p.Length == 2) return CadLayerOperations.Execute(d, h, "ENSURE", p[1]);
+        if (p.Length >= 3)
         {
-            var op=p[1].ToUpperInvariant();
-            if(op=="TRANSFER" && p.Length>3)
+            var op = p[1].ToUpperInvariant();
+            if (op == "TRANSFER" && p.Length > 3)
             {
-                var batch=new List<ICadEntity>();
-                foreach(var token in p.Skip(3)) {
-                    if(!Guid.TryParse(token,out var id) || d.Entities.FirstOrDefault(e=>e.Id==id) is not {} entity)return new(false,"ID de entidade inválido.");
+                var batch = new List<ICadEntity>();
+                foreach (var token in p.Skip(3))
+                {
+                    if (!Guid.TryParse(token, out var id) || d.Entities.FirstOrDefault(e => e.Id == id) is not { } entity) return new(false, "ID de entidade inválido.");
                     batch.Add(entity);
                 }
-                return CadLayerOperations.Execute(d,h,op,p[2],selected:batch);
+                return CadLayerOperations.Execute(d, h, op, p[2], selected: batch);
             }
-            if(op=="DELETE") {
-                var mode=p.Length>=4 ? p[3].ToUpperInvariant() : "CANCEL";
-                if(mode is not ("TRANSFER" or "ENTITIES" or "CANCEL"))return new(false,"Use TRANSFER destino, ENTITIES ou CANCEL.");
-                if(mode=="TRANSFER" && p.Length!=5)return new(false,"Informe destino.");
-                if(mode!="TRANSFER" && p.Length>4)return new(false,"Argumentos de exclusão inválidos.");
-                return CadLayerOperations.Execute(d,h,op,p[2],p.Length==5?p[4]:null,mode=="TRANSFER"?LayerDeleteMode.Transfer:mode=="ENTITIES"?LayerDeleteMode.DeleteEntities:LayerDeleteMode.Cancel);
+            if (op == "DELETE")
+            {
+                var mode = p.Length >= 4 ? p[3].ToUpperInvariant() : "CANCEL";
+                if (mode is not ("TRANSFER" or "ENTITIES" or "CANCEL")) return new(false, "Use TRANSFER destino, ENTITIES ou CANCEL.");
+                if (mode == "TRANSFER" && p.Length != 5) return new(false, "Informe destino.");
+                if (mode != "TRANSFER" && p.Length > 4) return new(false, "Argumentos de exclusão inválidos.");
+                return CadLayerOperations.Execute(d, h, op, p[2], p.Length == 5 ? p[4] : null, mode == "TRANSFER" ? LayerDeleteMode.Transfer : mode == "ENTITIES" ? LayerDeleteMode.DeleteEntities : LayerDeleteMode.Cancel);
             }
-            if(p.Length==3 && op is "CREATE" or "ACTIVE" or "SHOW" or "HIDE" or "LOCK" or "UNLOCK" or "TRANSFER")return CadLayerOperations.Execute(d,h,op,p[2]);
-            if(p.Length==4 && op is "RENAME" or "COLOR")return CadLayerOperations.Execute(d,h,op,p[2],p[3]);
+            if (p.Length == 3 && op is "CREATE" or "ACTIVE" or "SHOW" or "HIDE" or "LOCK" or "UNLOCK" or "TRANSFER") return CadLayerOperations.Execute(d, h, op, p[2]);
+            if (p.Length == 4 && op is "RENAME" or "COLOR") return CadLayerOperations.Execute(d, h, op, p[2], p[3]);
         }
-        return new(false,"Sintaxe LAYER inválida; nomes com espaços devem usar aspas.");
+        return new(false, "Sintaxe LAYER inválida; nomes com espaços devem usar aspas.");
+    }
+
+    private static CadCommandResult BatchCommand(CadDocument document, UndoRedoManager history, string rawInput)
+    {
+        var body = rawInput.Trim()[5..].Trim();
+        if (string.IsNullOrWhiteSpace(body))
+            return new(false, "Use BATCH cmd1 | cmd2 | ...");
+
+        var commands = body.Split('|', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        var res = CadBatchProcessor.ExecuteBatch(
+            document,
+            history,
+            commands,
+            "Console Batch",
+            "CadConsole",
+            recordAudit: true,
+            actorType: CadAuditActorType.HumanConsole);
+
+        return new(res.Success, res.Message, DrawingChanged: res.Success, LayersChanged: res.Success);
+    }
+
+    private static CadCommandResult StageCommand(CadDocument document, UndoRedoManager history, string rawInput, string[] parts)
+    {
+        if (parts.Length == 2 && parts[1].Equals("COMMIT", StringComparison.OrdinalIgnoreCase))
+            return CommitStagedCommand(document, history, ["COMMIT"]);
+        if (parts.Length == 2 && parts[1].Equals("DISCARD", StringComparison.OrdinalIgnoreCase))
+            return DiscardStagedCommand(document, ["DISCARD"]);
+
+        var body = rawInput.Trim()[5..].Trim();
+        if (string.IsNullOrWhiteSpace(body))
+            return new(false, "Use STAGE [\"resumo\"] cmd1 | cmd2 | ... ou STAGE COMMIT / STAGE DISCARD.");
+
+        var summary = "Proposta IA";
+        if (body.StartsWith('"'))
+        {
+            var closingQuote = body.IndexOf('"', 1);
+            if (closingQuote > 1)
+            {
+                summary = body[1..closingQuote].Trim();
+                body = body[(closingQuote + 1)..].Trim();
+            }
+        }
+
+        var commands = body.Split('|', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        var res = CadAiStagingManager.StageBatch(document, commands, summary, "CadConsole");
+        return new(res.Success, res.Message, DrawingChanged: res.Success);
+    }
+
+    private static CadCommandResult CommitStagedCommand(CadDocument document, UndoRedoManager history, string[] parts)
+    {
+        Guid? proposalId = parts.Length >= 2 && Guid.TryParse(parts[1], out var parsed) ? parsed : null;
+        var res = CadAiStagingManager.CommitStaged(document, history, proposalId);
+        return new(res.Success, res.Message, DrawingChanged: res.Success, LayersChanged: res.Success);
+    }
+
+    private static CadCommandResult DiscardStagedCommand(CadDocument document, string[] parts)
+    {
+        Guid? proposalId = parts.Length >= 2 && Guid.TryParse(parts[1], out var parsed) ? parsed : null;
+        var res = CadAiStagingManager.DiscardStaged(document, proposalId);
+        return new(res.Success, res.Message, DrawingChanged: res.Success);
+    }
+
+    private static CadCommandResult AuditCommand(CadDocument document, string[] parts)
+    {
+        if (parts.Length == 2 && parts[1].Equals("CLEAR", StringComparison.OrdinalIgnoreCase))
+        {
+            var count = document.AiAuditHistory.Count;
+            document.AiAuditHistory.Clear();
+            return new(true, $"Cleared {count} audit entries.");
+        }
+
+        if (document.AiAuditHistory.Count == 0)
+            return new(true, "No AI/batch audit entries recorded.");
+
+        var lines = document.AiAuditHistory
+            .OrderByDescending(a => a.TimestampUtc)
+            .Select(a => $"[{a.TimestampUtc:yyyy-MM-dd HH:mm:ss}] {a.ActorIdentifier} ({a.ActorType}) | {a.OperationName} | {a.Summary} | Tx={a.TransactionId}");
+        return new(true, string.Join(Environment.NewLine, lines));
+    }
+
+    private static CadCommandResult QueryCommand(CadDocument document, string[] parts)
+    {
+        string? layer = null;
+        List<string>? types = null;
+        string? text = null;
+
+        for (var i = 1; i < parts.Length; i++)
+        {
+            var key = parts[i].ToUpperInvariant();
+            if (key == "LAYER" && i + 1 < parts.Length)
+            {
+                layer = parts[++i];
+            }
+            else if (key == "TYPE" && i + 1 < parts.Length)
+            {
+                types = parts[++i].Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList();
+            }
+            else if (key == "TEXT" && i + 1 < parts.Length)
+            {
+                text = parts[++i];
+            }
+        }
+
+        var result = CadSemanticQueryEngine.QueryEntities(document, new CadSemanticFilter
+        {
+            Layer = layer,
+            EntityTypes = types,
+            TextContains = text
+        });
+
+        var header = $"Matched {result.MatchedCount}/{result.TotalDocumentEntities} entities (Total length={Format(result.TotalMatchedLengthMeters)}m, Closed area={Format(result.TotalMatchedClosedAreaSquareMeters)}m²).";
+        if (result.Entities.Count == 0) return new(true, header);
+
+        var items = result.Entities.Select(e => $"{e.Id}  {e.EntityType}  [{e.Layer}]  L={Format(e.LengthMeters)}m  {e.CoordinatesSummary}");
+        return new(true, header + Environment.NewLine + string.Join(Environment.NewLine, items));
+    }
+
+    private static CadCommandResult ConflictsCommand(CadDocument document, string[] parts)
+    {
+        string? layerA = parts.Length >= 2 ? parts[1] : null;
+        string? layerB = parts.Length >= 3 ? parts[2] : null;
+        double clearance = parts.Length >= 4 && Number(parts[3], out var c) ? c : 0.0;
+
+        var conflicts = CadSemanticQueryEngine.FindSpatialConflicts(document, layerA, layerB, clearance);
+        if (conflicts.Count == 0)
+            return new(true, "No spatial conflicts detected.");
+
+        var lines = conflicts.Select(cf => $"[{cf.ConflictType}] {cf.Description} ({cf.EntityAId} vs {cf.EntityBId})");
+        return new(true, $"Found {conflicts.Count} spatial conflict(s):" + Environment.NewLine + string.Join(Environment.NewLine, lines));
+    }
+
+    private static CadCommandResult TopologyCommand(CadDocument document)
+    {
+        var topo = CadSemanticQueryEngine.AnalyzeTopology(document);
+        var lines = new List<string>
+        {
+            $"Topology Summary: {topo.TotalEntities} entities across {topo.TotalLayers} layers | Length={Format(topo.TotalLinearLengthMeters)}m | Area={Format(topo.TotalClosedAreaSquareMeters)}m² | Enclosed regions={topo.EnclosedRegions.Count}"
+        };
+        foreach (var l in topo.Layers.Where(x => x.EntityCount > 0))
+        {
+            lines.Add($"  Layer '{l.LayerName}': {l.EntityCount} entities, L={Format(l.TotalLinearLengthMeters)}m, Area={Format(l.TotalClosedAreaSquareMeters)}m²");
+        }
+        foreach (var r in topo.EnclosedRegions)
+        {
+            var labels = r.EnclosedLabels.Count > 0 ? string.Join(", ", r.EnclosedLabels) : "(unlabeled)";
+            lines.Add($"  Region [{r.BoundaryEntityType} on {r.Layer}]: Area={Format(r.AreaSquareMeters)}m², Perimeter={Format(r.PerimeterMeters)}m, Labels={labels}");
+        }
+        return new(true, string.Join(Environment.NewLine, lines));
     }
 
     private static CadCommandResult Add(ICadEntity entity, CadDocument document, UndoRedoManager history)

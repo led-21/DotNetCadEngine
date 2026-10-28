@@ -40,14 +40,22 @@ public static class CadCommandCatalog
         "SAVE [path.cad]",
         "OPEN [DISCARD] path.cad|path.dxf",
         "NEW [DISCARD]",
+        "BATCH cmd1 | cmd2 | [...]",
+        "STAGE [\"summary\"] cmd1 | cmd2 | [...]",
+        "COMMIT",
+        "DISCARD",
+        "AUDIT [CLEAR]",
+        "QUERY [LAYER name] [TYPE type] [TEXT substr]",
+        "CONFLICTS [layerA] [layerB] [clearance]",
+        "TOPOLOGY",
     });
     public static string Help => string.Join(" | ", Syntax);
-    public static IReadOnlyList<string> Complete(string prefix) => Syntax.Select(s=>s.Split(' ')[0]).Distinct()
-        .Where(s=>s.StartsWith(prefix,StringComparison.OrdinalIgnoreCase)).OrderBy(s=>s).ToArray();
+    public static IReadOnlyList<string> Complete(string prefix) => Syntax.Select(s => s.Split(' ')[0]).Distinct()
+        .Where(s => s.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)).OrderBy(s => s).ToArray();
     public static string Hint(string input)
     {
-        var name=input.TrimStart().Split(' ',StringSplitOptions.RemoveEmptyEntries).FirstOrDefault() ?? "";
-        return string.Join("  •  ",Syntax.Where(s=>s.Split(' ')[0].Equals(name,StringComparison.OrdinalIgnoreCase)));
+        var name = input.TrimStart().Split(' ', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault() ?? "";
+        return string.Join("  •  ", Syntax.Where(s => s.Split(' ')[0].Equals(name, StringComparison.OrdinalIgnoreCase)));
     }
-    public static bool IsReadOnly(string input) => input.TrimStart().Split(' ',StringSplitOptions.RemoveEmptyEntries).FirstOrDefault()?.ToUpperInvariant() is "HELP" or "LIST" or "PROPERTIES" or "ZOOM";
+    public static bool IsReadOnly(string input) => input.TrimStart().Split(' ', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault()?.ToUpperInvariant() is "HELP" or "LIST" or "PROPERTIES" or "ZOOM" or "AUDIT" or "QUERY" or "CONFLICTS" or "TOPOLOGY";
 }

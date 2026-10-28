@@ -4,13 +4,14 @@ namespace DotNetCad.Core.Geometry;
 
 public static class CadConstructionMath
 {
-    public static (Point2D Start, Point2D End) OffsetSegment(Point2D p1, Point2D p2, double distance, bool toLeft = true)
+    public static (Point2D Start, Point2D End) OffsetSegment(Point2D p1, Point2D p2, double distance, bool toLeft = true, GeometricTolerancePolicy? tol = null)
     {
+        tol ??= GeometricTolerancePolicy.Default;
         var dx = p2.X - p1.X;
         var dy = p2.Y - p1.Y;
         var len = Math.Sqrt((dx * dx) + (dy * dy));
 
-        if (!double.IsFinite(distance) || !double.IsFinite(len) || len < 1e-6)
+        if (!double.IsFinite(distance) || !double.IsFinite(len) || len < tol.PointCoincidenceTolerance)
             throw new ArgumentException("Offset requer segmento finito e não degenerado.");
 
         double nx, ny;
@@ -203,12 +204,13 @@ public static class CadConstructionMath
         return OffsetPolyline(vertices, isClosed: true, distance);
     }
 
-    public static (Point2D Start, Point2D End)? ExtendSegment(Point2D p1, Point2D p2, Point2D boundA, Point2D boundB)
+    public static (Point2D Start, Point2D End)? ExtendSegment(Point2D p1, Point2D p2, Point2D boundA, Point2D boundB, GeometricTolerancePolicy? tol = null)
     {
-        var inter = FindLineIntersection(p1, p2, boundA, boundB);
+        tol ??= GeometricTolerancePolicy.Default;
+        var inter = CadIntersectionEngine.IntersectLineLine(p1, p2, boundA, boundB, tol);
         if (inter == null) return null;
 
-        if (!IsPointOnSegment(inter.Value, boundA, boundB, tolerance: 0.05)) return null;
+        if (!IsPointOnSegment(inter.Value, boundA, boundB, tolerance: tol.OnCurveTolerance)) return null;
 
         var vDirX = p2.X - p1.X;
         var vDirY = p2.Y - p1.Y;
@@ -340,27 +342,29 @@ public static class CadConstructionMath
         return pickPos < bestT ? (bestInter.Value, p2) : (p1, bestInter.Value);
     }
 
-    public static ((Point2D Start, Point2D End) Seg1, (Point2D Start, Point2D End) Seg2)? BreakSegment(Point2D p1, Point2D p2, Point2D breakPoint)
+    public static ((Point2D Start, Point2D End) Seg1, (Point2D Start, Point2D End) Seg2)? BreakSegment(Point2D p1, Point2D p2, Point2D breakPoint, GeometricTolerancePolicy? tol = null)
     {
+        tol ??= GeometricTolerancePolicy.Default;
         var seg = new LineSegment2D(p1, p2);
         var proj = seg.ClosestPointTo(breakPoint);
         var d1 = p1.DistanceTo(proj);
         var d2 = p2.DistanceTo(proj);
-        if (d1 < 1e-4 || d2 < 1e-4) return null;
+        if (d1 < tol.OnCurveTolerance || d2 < tol.OnCurveTolerance) return null;
         return ((p1, proj), (proj, p2));
     }
 
-    public static (Point2D Center, Point2D TangentA, Point2D TangentB)? CreateFillet(Point2D a1, Point2D a2, Point2D b1, Point2D b2, double radius)
+    public static (Point2D Center, Point2D TangentA, Point2D TangentB)? CreateFillet(Point2D a1, Point2D a2, Point2D b1, Point2D b2, double radius, GeometricTolerancePolicy? tol = null)
     {
-        var inter = FindLineIntersection(a1, a2, b1, b2);
-        if (inter == null || radius <= 0.001) return null;
+        tol ??= GeometricTolerancePolicy.Default;
+        var inter = CadIntersectionEngine.IntersectLineLine(a1, a2, b1, b2, tol);
+        if (inter == null || radius < tol.MinEntityDimension) return null;
 
         var v1 = new Point2D(a1.X - inter.Value.X, a1.Y - inter.Value.Y);
         var v2 = new Point2D(b2.X - inter.Value.X, b2.Y - inter.Value.Y);
 
         var len1 = Math.Sqrt((v1.X * v1.X) + (v1.Y * v1.Y));
         var len2 = Math.Sqrt((v2.X * v2.X) + (v2.Y * v2.Y));
-        if (len1 < 1e-6 || len2 < 1e-6) return null;
+        if (len1 < tol.PointCoincidenceTolerance || len2 < tol.PointCoincidenceTolerance) return null;
 
         var u1 = new Point2D(v1.X / len1, v1.Y / len1);
         var u2 = new Point2D(v2.X / len2, v2.Y / len2);

@@ -173,10 +173,10 @@ public sealed class CadViewport : FrameworkElement
 
     #endregion
 
-    public bool HasInteractiveOperation => _modification != null || ActiveTool == CadToolType.Text || _draftStartPoint != null || _polyDraftPoints.Count > 0 || _dimensionStep > 0 || _isDraggingGrip;
+    public bool HasInteractiveOperation => _modification != null || _trimExtendSession != null || ActiveTool == CadToolType.Text || _draftStartPoint != null || _polyDraftPoints.Count > 0 || _dimensionStep > 0 || _isDraggingGrip;
     public void CancelOperation()
     {
-        ResetDraftState(); _modification=null; _parameterText=""; _textPreview=null;
+        ResetDraftState(); _modification=null; _parameterText=""; _textPreview=null; _trimExtendSession=null;
         ReleaseMouseCapture(); ActiveTool=CadToolType.Select; InvalidateVisual();
     }
     public static readonly DependencyProperty CommandStatusProperty = DependencyProperty.Register(nameof(CommandStatus),typeof(string),typeof(CadViewport),new PropertyMetadata("Selecione uma ferramenta."));
@@ -187,6 +187,7 @@ public sealed class CadViewport : FrameworkElement
     private CadText? _textPreview;
     private string TextPrompt => _textStep switch { 0 => "Texto: digite o conteúdo e Enter.", 1 => "Texto: altura em metros (ex.: 0,25) e Enter.", 2 => "Texto: clique no ponto de inserção para concluir. Esc cancela.", _ => "Texto: clique no ponto de inserção para concluir; Esc cancela." };
     private CadModificationSession? _modification;
+    private CadTrimExtendSession? _trimExtendSession;
     private string _parameterText = "";
     private readonly ViewportTransform _transform = new();
     private bool _initialViewportCentered;
@@ -309,6 +310,9 @@ public sealed class CadViewport : FrameworkElement
                 ? new CadModificationSession(vp.ActiveTool) : null;
             if (vp._modification != null && vp.Document?.Entities.Any(e => e.IsSelected) == true)
                 vp._modification.Select(vp.Document.Entities);
+            vp._trimExtendSession = vp.ActiveTool is CadToolType.Trim or CadToolType.Extend ? new CadTrimExtendSession(vp.ActiveTool) : null;
+            if (vp._trimExtendSession != null && vp.Document?.Entities.Any(e => e.IsSelected) == true) vp._trimExtendSession.InitializePreselected(vp.Document.Entities.Where(e => e.IsSelected));
+            vp.UpdateCommandStatus();
             vp.Cursor = vp.ActiveTool == CadToolType.Pan ? Cursors.Hand : Cursors.Cross;
             vp.InvalidateVisual();
         }
@@ -326,6 +330,7 @@ public sealed class CadViewport : FrameworkElement
         _cycleCandidates = null;
         _cycleCandidateIndex = 0;
         _lastSelectClickPoint = null;
+        _trimExtendSession = null;
     }
 
     public void ClearSelection()
@@ -479,6 +484,10 @@ public sealed class CadViewport : FrameworkElement
         if (Document != null)
         {
             DrawEntities(dc);
+            if (Document.StagedProposal is { } staged)
+            {
+                DrawStagedProposalPreview(dc, staged);
+            }
         }
 
         if (_modification != null)
@@ -497,15 +506,64 @@ public sealed class CadViewport : FrameworkElement
         {
             dc.PushOpacity(.6); DrawEntities(dc, [_textPreview]); dc.Pop();
         }
-        CommandStatus = (ActiveTool == CadToolType.Text ? TextPrompt + " " + _parameterText : _modification?.Prompt ??
-            (ActiveTool == CadToolType.Select ? "Clique para selecionar; Shift adiciona; arraste uma janela de seleção." : "Clique no viewport para definir os pontos; Esc cancela."))
-            + " | Captura: " + (Document?.Preferences.IsOsnapEnabled == true ? "objetos" : "livre")
-            + (Document?.Preferences.IsOrthoModeEnabled == true ? " / ortogonal" : "")
-            + (Document?.Preferences.IsPolarTrackingEnabled == true ? " / polar" : "");
+        if (_trimExtendSession != null)
+        {
+            DrawTrimExtendGuides(dc, _trimExtendSession);
+            var message = _trimExtendSession.Prompt + (!string.IsNullOrEmpty(_trimExtendSession.Feedback) ? "\n" + _trimExtendSession.Feedback : "");
+            var text = new FormattedText(message, CultureInfo.GetCultureInfo("pt-BR"), FlowDirection.LeftToRight,
+                new Typeface("Segoe UI"), 14, Brushes.White, VisualTreeHelper.GetDpi(this).PixelsPerDip);
+            dc.DrawRectangle(new SolidColorBrush(Color.FromArgb(200, 15, 23, 42)), null, new Rect(8, 8, Math.Min(ActualWidth, text.Width + 16), text.Height + 12));
+            dc.DrawText(text, new Point(16, 14));
+        }
+        UpdateCommandStatus();
         DrawActiveDraft(dc);
         DrawSelectionBox(dc);
         DrawGrips(dc);
         DrawSnapGuides(dc);
+    }
+
+    public void HandleTrimExtendClick(Point2D worldPt)
+    {
+        if (_trimExtendSession == null) return;
+        var hitTol = CadSnapEngine.ConvertScreenPixelsToMeters(Document?.Preferences.SelectionHitSizePixels ?? 10, _transform.Zoom);
+        if (_trimExtendSession.Step == 0)
+        {
+            var hit = CadSelectionEngine.SelectByPoint(VisibleEntities(), worldPt, hitTol);
+            if (hit != null)
+            {
+                _trimExtendSession.ToggleBoundary(hit);
+                UpdateCommandStatus();
+                InvalidateVisual();
+            }
+        }
+        else
+        {
+            var res = _trimExtendSession.ExecuteClick(worldPt, VisibleEntities(), hitTol, Document!, UndoManager!);
+            if (res.DrawingChanged)
+            {
+                CommandManager.InvalidateRequerySuggested();
+            }
+            UpdateCommandStatus();
+            InvalidateVisual();
+        }
+    }
+
+    public void HandleTrimExtendHover(Point2D worldPt)
+    {
+        if (_trimExtendSession == null || Document == null) return;
+        var prefs = Document.Preferences;
+        var hitTol = CadSnapEngine.ConvertScreenPixelsToMeters(prefs.SelectionHitSizePixels, _transform.Zoom);
+        _trimExtendSession.Hover(worldPt, VisibleEntities(), hitTol, Document);
+        UpdateCommandStatus();
+    }
+
+    internal void UpdateCommandStatus()
+    {
+        CommandStatus = (_trimExtendSession != null ? _trimExtendSession.Prompt + (!string.IsNullOrEmpty(_trimExtendSession.Feedback) ? " | " + _trimExtendSession.Feedback : "") : ActiveTool == CadToolType.Text ? TextPrompt + " " + _parameterText : _modification?.Prompt ??
+            (ActiveTool == CadToolType.Select ? "Clique para selecionar; Shift adiciona; arraste uma janela de seleção." : "Clique no viewport para definir os pontos; Esc cancela."))
+            + " | Captura: " + (Document?.Preferences.IsOsnapEnabled == true ? "objetos" : "livre")
+            + (Document?.Preferences.IsOrthoModeEnabled == true ? " / ortogonal" : "")
+            + (Document?.Preferences.IsPolarTrackingEnabled == true ? " / polar" : "");
     }
 
     private void DrawGrid(DrawingContext dc)
@@ -790,6 +848,102 @@ public sealed class CadViewport : FrameworkElement
         {Arrow(pivot,target);Label(target,Length(session.Distance));}
     }
 
+    private void DrawTrimExtendGuides(DrawingContext dc, CadTrimExtendSession session)
+    {
+        var boundaryPen = new Pen(new SolidColorBrush(Color.FromArgb(220, 245, 158, 11)), 2.0)
+        {
+            DashStyle = DashStyles.Dash
+        };
+        boundaryPen.Freeze();
+
+        foreach (var b in session.Boundaries)
+        {
+            DrawEntity(dc, b, boundaryPen, Color.FromRgb(245, 158, 11));
+        }
+
+        if (session.Tool == CadToolType.Trim && session.HoverTrimResult is { } trimRes)
+        {
+            var discardPen = new Pen(new SolidColorBrush(Color.FromArgb(240, 239, 68, 68)), Math.Max(2.5, trimRes.DiscardedSegment.LineThickness + 2.0))
+            {
+                DashStyle = DashStyles.Dash
+            };
+            discardPen.Freeze();
+            DrawEntity(dc, trimRes.DiscardedSegment, discardPen, Color.FromRgb(239, 68, 68));
+
+            var pt = ToWpfPoint(trimRes.IntersectionPoint);
+            const double s = 6.0;
+            dc.DrawLine(discardPen, new Point(pt.X - s, pt.Y - s), new Point(pt.X + s, pt.Y + s));
+            dc.DrawLine(discardPen, new Point(pt.X - s, pt.Y + s), new Point(pt.X + s, pt.Y - s));
+        }
+
+        if (session.Tool == CadToolType.Extend && session.HoverExtendResult is { } extRes)
+        {
+            var extPen = new Pen(new SolidColorBrush(Color.FromArgb(240, 34, 197, 94)), Math.Max(2.5, extRes.ExtendedEntity.LineThickness + 2.0))
+            {
+                DashStyle = DashStyles.Dash
+            };
+            extPen.Freeze();
+            DrawEntity(dc, extRes.ExtendedEntity, extPen, Color.FromRgb(34, 197, 94));
+
+            var pt = ToWpfPoint(extRes.ExtensionPoint);
+            dc.DrawEllipse(new SolidColorBrush(Color.FromArgb(180, 34, 197, 94)), extPen, pt, 4.0, 4.0);
+        }
+    }
+
+    private void DrawStagedProposalPreview(DrawingContext dc, CadStagedProposal staged)
+    {
+        var doc = Document;
+        if (doc == null) return;
+
+        var addModColor = Color.FromRgb(16, 185, 129);
+        var addModPen = new Pen(new SolidColorBrush(Color.FromArgb(230, 16, 185, 129)), 2.2)
+        {
+            DashStyle = DashStyles.Dash
+        };
+        addModPen.Freeze();
+
+        var removeColor = Color.FromRgb(239, 68, 68);
+        var removePen = new Pen(new SolidColorBrush(Color.FromArgb(230, 239, 68, 68)), 2.2)
+        {
+            DashStyle = DashStyles.Dash
+        };
+        removePen.Freeze();
+
+        dc.PushOpacity(0.85);
+        foreach (var entity in staged.AddedEntities.Concat(staged.ModifiedEntities))
+        {
+            DrawEntity(dc, entity, addModPen, addModColor);
+        }
+
+        if (staged.RemovedEntityIds.Count > 0)
+        {
+            var removedSet = staged.RemovedEntityIds.ToHashSet();
+            foreach (var entity in doc.Entities.Where(e => removedSet.Contains(e.Id)))
+            {
+                DrawEntity(dc, entity, removePen, removeColor);
+            }
+        }
+        dc.Pop();
+
+        var bannerMsg = $"[PREVIEW IA] {staged.Summary} (+{staged.AddedEntities.Count} / ~{staged.ModifiedEntities.Count} / -{staged.RemovedEntityIds.Count}) — Digite COMMIT para aplicar ou DISCARD para descartar";
+        var bannerText = new FormattedText(
+            bannerMsg,
+            CultureInfo.GetCultureInfo("pt-BR"),
+            FlowDirection.LeftToRight,
+            new Typeface("Segoe UI"),
+            13,
+            Brushes.White,
+            VisualTreeHelper.GetDpi(this).PixelsPerDip);
+
+        var rectWidth = Math.Min(ActualWidth - 16, bannerText.Width + 20);
+        dc.DrawRoundedRectangle(
+            new SolidColorBrush(Color.FromArgb(225, 6, 78, 59)),
+            new Pen(new SolidColorBrush(addModColor), 1.2),
+            new Rect(8, 8, Math.Max(40, rectWidth), bannerText.Height + 10),
+            4, 4);
+        dc.DrawText(bannerText, new Point(18, 13));
+    }
+
     private void DrawActiveDraft(DrawingContext dc)
     {
         var draftPen = new Pen(new SolidColorBrush(Color.FromArgb(200, 245, 158, 11)), 1.5)
@@ -1048,6 +1202,24 @@ public sealed class CadViewport : FrameworkElement
 
         if (e.ChangedButton == MouseButton.Right)
         {
+            if (_trimExtendSession != null)
+            {
+                if (_trimExtendSession.Step == 0)
+                {
+                    _trimExtendSession.ConfirmBoundaries(VisibleEntities());
+                    InvalidateVisual();
+                    e.Handled = true;
+                    return;
+                }
+                else
+                {
+                    _trimExtendSession = null;
+                    ActiveTool = CadToolType.Select;
+                    InvalidateVisual();
+                    e.Handled = true;
+                    return;
+                }
+            }
             if(_modification?.Step == 0 && Document!=null)
             {
                 _modification.Select(Document.Entities);InvalidateVisual();e.Handled=true;return;
@@ -1068,6 +1240,12 @@ public sealed class CadViewport : FrameworkElement
 
         if (e.ChangedButton == MouseButton.Left)
         {
+            if (_trimExtendSession != null)
+            {
+                HandleTrimExtendClick(worldPt);
+                if (e.RoutedEvent != null) e.Handled = true;
+                return;
+            }
             var precisionPt = CadSnapEngine.ResolvePrecisionPoint(worldPt, VisibleEntities(),
                 Document?.Preferences ?? new CadPreferences(),
                 CadSnapEngine.ConvertScreenPixelsToMeters(Document?.Preferences.SnapHitSizePixels ?? 10, _transform.Zoom),
@@ -1159,6 +1337,7 @@ public sealed class CadViewport : FrameworkElement
         _draftCurrentPoint = _currentSnap.Point;
         _modification?.Hover(_currentSnap.Point,_parameterText);
         if (ActiveTool == CadToolType.Text && _textStep == 2) UpdateTextPreview(_currentSnap.Point);
+        if (_trimExtendSession != null && Document != null) { HandleTrimExtendHover(_rawMouseWorld); }
 
         if (_isBoxSelecting)
         {
@@ -1352,6 +1531,23 @@ public sealed class CadViewport : FrameworkElement
 
             }
             e.Handled=true; InvalidateVisual(); return;
+        }
+        if (_trimExtendSession != null && e.Key is not (Key.F8 or Key.F10 or Key.F3))
+        {
+            if (e.Key == Key.Escape)
+            {
+                if (_trimExtendSession.Step == 1) _trimExtendSession.Cancel();
+                else { _trimExtendSession = null; ActiveTool = CadToolType.Select; }
+                UpdateCommandStatus();
+                e.Handled = true; InvalidateVisual(); return;
+            }
+            if (e.Key == Key.Enter)
+            {
+                if (_trimExtendSession.Step == 0) _trimExtendSession.ConfirmBoundaries(VisibleEntities());
+                else { _trimExtendSession = null; ActiveTool = CadToolType.Select; }
+                UpdateCommandStatus();
+                e.Handled = true; InvalidateVisual(); return;
+            }
         }
         if (_modification != null && e.Key is not (Key.F8 or Key.F10 or Key.F3))
         {

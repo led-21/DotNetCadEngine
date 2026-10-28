@@ -227,4 +227,22 @@ public sealed class GeometryScaleAndPrecisionTests
         Assert.Equal(10.0, extended.Value.End.X, 4);
         Assert.Equal(5.0, extended.Value.End.Y, 4);
     }
+
+    [Fact]
+    public void GeometryValidator_RespectsTolerancePolicyAcrossUnits_AndValidatesArcs()
+    {
+        var mmPolicy = GeometricTolerancePolicy.ForUnit(CadLinearUnit.Millimeter);
+        var cmPolicy = GeometricTolerancePolicy.ForUnit(CadLinearUnit.Centimeter);
+
+        // Segment of 0.02 units: valid in centimeters (MinEntityDimension = 0.01), invalid in millimeters (MinEntityDimension = 0.1)
+        var p1 = new Point2D(0, 0);
+        var p2 = new Point2D(0.02, 0);
+        Assert.True(GeometryValidator.ValidateSegment(p1, p2, cmPolicy).IsValid);
+        Assert.False(GeometryValidator.ValidateSegment(p1, p2, mmPolicy).IsValid);
+
+        // Arc validation: valid sweep vs degenerate 0° and 360° sweeps
+        Assert.True(GeometryValidator.ValidateArc(new(0, 0), 2.0, 15.0, 135.0, cmPolicy).IsValid);
+        Assert.False(GeometryValidator.ValidateArc(new(0, 0), 2.0, 45.0, 45.01, cmPolicy).IsValid);
+        Assert.False(GeometryValidator.ValidateArc(new(0, 0), 2.0, 0.0, 360.0, cmPolicy).IsValid);
+    }
 }
