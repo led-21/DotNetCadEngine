@@ -25,7 +25,7 @@ public static class DxfCadExporter
         foreach (var layer in document.Layers)
         {
             var aci = ColorHexToAci(layer.ColorHex);
-            WriteLayer(sb, layer.Name, aci);
+            WriteLayer(sb, layer.Name, layer.IsVisible ? aci : -aci, layer.IsLocked);
         }
         sb.AppendLine("0\nENDTAB\n0\nENDSEC");
 
@@ -77,9 +77,9 @@ public static class DxfCadExporter
         return sb.ToString();
     }
 
-    private static void WriteLayer(StringBuilder sb, string name, int colorIndex)
+    private static void WriteLayer(StringBuilder sb, string name, int colorIndex, bool locked = false)
     {
-        sb.AppendLine($"0\nLAYER\n2\n{name}\n70\n0\n62\n{colorIndex}\n6\nCONTINUOUS");
+        sb.AppendLine($"0\nLAYER\n2\n{name}\n70\n{(locked ? 4 : 0)}\n62\n{colorIndex}\n6\nCONTINUOUS");
     }
 
     private static void WriteLine(StringBuilder sb, string layer, double x1, double y1, double x2, double y2, CultureInfo inv)

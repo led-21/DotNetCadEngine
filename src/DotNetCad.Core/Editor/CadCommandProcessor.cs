@@ -11,7 +11,7 @@ public sealed record CadCommandResult(bool Success, string Message, bool Drawing
 /// <summary>Executes one CAD command against the same document and history used by the viewport.</summary>
 public static class CadCommandProcessor
 {
-    public const string Help = "HELP | LINE x1;y1 x2;y2 | CIRCLE x;y radius | RECT x1;y1 x2;y2 | ARC x;y radius start end | POLYLINE x1;y1 x2;y2 [...] | TEXT x;y height words... | DIM x1;y1 x2;y2 offsetX;offsetY | LAYER name | LAYER SHOW|HIDE name | LAYER COLOR name #RRGGBB | PROPERTIES id | PROPERTIES LAYER name | LIST | BREAK lineId x1;y1 x2;y2 | TRIM lineId boundaryId pickX;pickY | EXTEND lineId boundaryId START|END | OFFSET id distance [LEFT|RIGHT] | MOVE id dx;dy | COPY id dx;dy | ROTATE id centerX;centerY angleDegrees | MIRROR id axisX1;axisY1 axisX2;axisY2 | DELETE id | CLEAR | UNDO | REDO";
+    public const string Help = "HELP | LINE x1;y1 x2;y2 | CIRCLE x;y radius | RECT x1;y1 x2;y2 | ARC x;y radius start end | POLYLINE x1;y1 x2;y2 [...] | TEXT x;y height words... | DIM x1;y1 x2;y2 offsetX;offsetY | LAYER name | LAYER SHOW|HIDE name | LAYER COLOR name #RRGGBB | LAYER CREATE|ACTIVE|LOCK|UNLOCK name | LAYER RENAME name newName | LAYER DELETE name TRANSFER destination|ENTITIES|CANCEL | LAYER TRANSFER destination [entityId ...] | LAYER SHOWALL | PROPERTIES id | PROPERTIES LAYER name | LIST | BREAK lineId x1;y1 x2;y2 | TRIM lineId boundaryId pickX;pickY | EXTEND lineId boundaryId START|END | OFFSET id distance [LEFT|RIGHT] | MOVE id dx;dy | COPY id dx;dy | ROTATE id centerX;centerY angleDegrees | MIRROR id axisX1;axisY1 axisX2;axisY2 | DELETE id | CLEAR | UNDO | REDO";
 
     public static CadCommandResult Execute(CadDocument document, UndoRedoManager history, string input)
     {
@@ -19,11 +19,20 @@ public static class CadCommandProcessor
         ArgumentNullException.ThrowIfNull(history);
         if (string.IsNullOrWhiteSpace(input)) return new(false, "Enter a command. Type HELP for syntax.");
 
-        var parts = input.Trim().Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries);
+        var matches = System.Text.RegularExpressions.Regex.Matches(input.Trim(), "\"[^\"]*\"|\\S+");
+        var parts = matches.Select(m => m.Value.Trim('"')).ToArray();
         var command = parts[0].ToUpperInvariant();
 
         try
         {
+            if(command == "LAYER") return LayerCommand(document,history,parts);
+            if(command is "LINE" or "CIRCLE" or "RECT" or "ARC" or "POLYLINE" or "TEXT" or "DIM") CadLayerOperations.RequireUsable(document,document.ActiveLayer);
+            if(command == "CLEAR") CadLayerOperations.RequireEditable(document,document.Entities);
+            if(command is "MOVE" or "COPY" or "ROTATE" or "MIRROR" or "OFFSET" or "DELETE" or "BREAK" or "TRIM" or "EXTEND")
+            {
+                if(parts.Length>1 && Guid.TryParse(parts[1],out var editId))
+                    CadLayerOperations.RequireEditable(document,document.Entities.Where(e=>e.Id==editId));
+            }
             switch (command)
             {
                 case "HELP":
@@ -108,50 +117,6 @@ public static class CadCommandProcessor
                         Layer = document.ActiveLayer,
                         ColorHex = ActiveColor(document)
                     }, document, history);
-                }
-                case "LAYER" when parts.Length == 2:
-                {
-                    var layer = document.GetLayer(parts[1]);
-                    if (layer == null)
-                    {
-                        layer = new CadLayer { Name = parts[1], ColorHex = "#38BDF8" };
-                        document.Layers.Add(layer);
-                    }
-                    if (!layer.IsVisible) return new(false, "Make the layer visible before activating it.");
-                    document.ActiveLayer = layer.Name;
-                    return new(true, $"Active layer: {layer.Name}", LayersChanged: true);
-                }
-                case "LAYER" when parts.Length == 3 &&
-                    (parts[1].Equals("SHOW", StringComparison.OrdinalIgnoreCase) ||
-                     parts[1].Equals("HIDE", StringComparison.OrdinalIgnoreCase)):
-                {
-                    var layer = document.GetLayer(parts[2]);
-                    if (layer == null) return new(false, "Layer not found.");
-                    var show = parts[1].Equals("SHOW", StringComparison.OrdinalIgnoreCase);
-                    if (layer.IsVisible == show)
-                        return new(true, $"Layer {layer.Name} is already {(show ? "visible" : "hidden")}.");
-                    var nextActive = document.ActiveLayer;
-                    if (!show && document.ActiveLayer.Equals(layer.Name, StringComparison.OrdinalIgnoreCase))
-                    {
-                        nextActive = document.Layers.FirstOrDefault(item => item != layer && item.IsVisible)?.Name ?? string.Empty;
-                        if (nextActive.Length == 0) return new(false, "At least one visible layer must remain active.");
-                    }
-                    history.ExecuteAction(new SetLayerVisibilityAction(document, layer, show, nextActive));
-                    return new(true, $"Layer {layer.Name} is now {(show ? "visible" : "hidden")}. Active layer: {document.ActiveLayer}.",
-                        DrawingChanged: true, LayersChanged: true);
-                }
-                case "LAYER" when parts.Length == 4 && parts[1].Equals("COLOR", StringComparison.OrdinalIgnoreCase):
-                {
-                    var layer = document.GetLayer(parts[2]);
-                    if (layer == null) return new(false, "Layer not found.");
-                    var color = parts[3];
-                    if (color.Length != 7 || color[0] != '#' || !color.Skip(1).All(Uri.IsHexDigit))
-                        return new(false, "Use a color in #RRGGBB form.");
-                    color = color.ToUpperInvariant();
-                    if (layer.ColorHex.Equals(color, StringComparison.OrdinalIgnoreCase))
-                        return new(true, $"Layer {layer.Name} already uses {color}.");
-                    history.ExecuteAction(new SetLayerColorAction(document, layer, color));
-                    return new(true, $"Layer {layer.Name} color changed to {color}.", DrawingChanged: true, LayersChanged: true);
                 }
                 case "PROPERTIES" when parts.Length == 2:
                 {
@@ -333,6 +298,41 @@ public static class CadCommandProcessor
         {
             return new(false, ex.Message);
         }
+    }
+
+    private static CadCommandResult LayerCommand(CadDocument d, UndoRedoManager h, string[] p)
+    {
+        if(p.Length==2 && p[1].Equals("SHOWALL",StringComparison.OrdinalIgnoreCase))
+        {
+            var changes=d.Layers.Where(l=>!l.IsVisible).Select(l=>(IUndoableAction)new SetLayerVisibilityAction(d,l,true,d.ActiveLayer)).ToArray();
+            if(changes.Length==0)return new(true,"Todas já visíveis.");
+            h.ExecuteAction(new CompositeUndoableAction(changes,"Mostrar todas as camadas"));return new(true,"Todas visíveis.",true,true);
+        }
+        if(p.Length==2) return CadLayerOperations.Execute(d,h,"ENSURE",p[1]);
+        if(p.Length==3 && p[1].Equals("SHOWALL",StringComparison.OrdinalIgnoreCase)) return new(false,"Use LAYER SHOWALL.");
+        if(p.Length==2 && p[1]=="SHOWALL") return new(false,"Use LAYER SHOW name.");
+        if(p.Length>=3)
+        {
+            var op=p[1].ToUpperInvariant();
+            if(op=="TRANSFER" && p.Length>3)
+            {
+                var batch=new List<ICadEntity>();
+                foreach(var token in p.Skip(3)) {
+                    if(!Guid.TryParse(token,out var id) || d.Entities.FirstOrDefault(e=>e.Id==id) is not {} entity)return new(false,"ID de entidade inválido.");
+                    batch.Add(entity);
+                }
+                return CadLayerOperations.Execute(d,h,op,p[2],selected:batch);
+            }
+            if(op=="DELETE") {
+                var mode=p.Length>=4 ? p[3].ToUpperInvariant() : "CANCEL";
+                if(mode is not ("TRANSFER" or "ENTITIES" or "CANCEL"))return new(false,"Use TRANSFER destino, ENTITIES ou CANCEL.");
+                if(mode=="TRANSFER" && p.Length!=5)return new(false,"Informe destino.");
+                return CadLayerOperations.Execute(d,h,op,p[2],p.Length==5?p[4]:null,mode=="TRANSFER"?LayerDeleteMode.Transfer:mode=="ENTITIES"?LayerDeleteMode.DeleteEntities:LayerDeleteMode.Cancel);
+            }
+            if(p.Length==3 && op is "CREATE" or "ACTIVE" or "SHOW" or "HIDE" or "LOCK" or "UNLOCK" or "TRANSFER")return CadLayerOperations.Execute(d,h,op,p[2]);
+            if(p.Length==4 && op is "RENAME" or "COLOR")return CadLayerOperations.Execute(d,h,op,p[2],p[3]);
+        }
+        return new(false,"Sintaxe LAYER inválida; nomes com espaços devem usar aspas.");
     }
 
     private static CadCommandResult Add(ICadEntity entity, CadDocument document, UndoRedoManager history)

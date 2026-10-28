@@ -74,6 +74,9 @@ public static class CadDrawingSerializer
                 Preferences = file.Preferences,
                 Entities = []
             };
+            if (document.GetLayer(document.ActiveLayer)?.IsLocked == true)
+                document.ActiveLayer = document.Layers.FirstOrDefault(l=>l.IsVisible && !l.IsLocked)?.Name
+                    ?? throw new InvalidDataException("Drawing has no visible unlocked layer.");
             var ids = new HashSet<Guid>();
             foreach (var item in file.Entities)
             {

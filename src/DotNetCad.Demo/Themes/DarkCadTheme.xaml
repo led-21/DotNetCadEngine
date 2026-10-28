@@ -46,6 +46,7 @@
                                         <ControlTemplate TargetType="Thumb">
                                             <Border x:Name="Grip" Background="#475569" CornerRadius="4" Margin="2" />
                                             <ControlTemplate.Triggers>
+                        <Trigger Property="IsKeyboardFocused" Value="True"><Setter Property="BorderBrush" Value="#FACC15" /></Trigger>
                                                 <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Grip" Property="Background" Value="#94A3B8" /></Trigger>
                                                 <Trigger Property="IsDragging" Value="True"><Setter TargetName="Grip" Property="Background" Value="#38BDF8" /></Trigger>
                                             </ControlTemplate.Triggers>
@@ -59,6 +60,7 @@
                         </Track>
                     </Border>
                     <ControlTemplate.Triggers>
+                        <Trigger Property="IsKeyboardFocused" Value="True"><Setter Property="BorderBrush" Value="#FACC15" /></Trigger>
                         <Trigger Property="Orientation" Value="Horizontal">
                             <Setter TargetName="PART_Track" Property="IsDirectionReversed" Value="False" />
                             <Setter TargetName="Decrease" Property="Command" Value="ScrollBar.PageLeftCommand" />
@@ -99,6 +101,7 @@
                         <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
                     </Border>
                     <ControlTemplate.Triggers>
+                        <Trigger Property="IsKeyboardFocused" Value="True"><Setter Property="BorderBrush" Value="#FACC15" /></Trigger>
                         <Trigger Property="IsMouseOver" Value="True">
                             <Setter Property="Background" Value="#334155" />
                             <Setter Property="BorderBrush" Value="{StaticResource AccentCyanBrush}" />
@@ -133,6 +136,7 @@
                         </Viewbox>
                     </Border>
                     <ControlTemplate.Triggers>
+                        <Trigger Property="IsKeyboardFocused" Value="True"><Setter Property="BorderBrush" Value="#FACC15" /></Trigger>
                         <Trigger Property="IsMouseOver" Value="True">
                             <Setter Property="Background" Value="#334155" />
                             <Setter Property="BorderBrush" Value="{StaticResource AccentCyanBrush}" />
@@ -164,6 +168,7 @@
                         </Viewbox>
                     </Border>
                     <ControlTemplate.Triggers>
+                        <Trigger Property="IsKeyboardFocused" Value="True"><Setter Property="BorderBrush" Value="#FACC15" /></Trigger>
                         <Trigger Property="IsMouseOver" Value="True"><Setter Property="Background" Value="#334155" /></Trigger>
                         <Trigger Property="IsChecked" Value="True">
                             <Setter Property="Background" Value="#16465E" />
@@ -192,6 +197,7 @@
                         </StackPanel>
                     </Border>
                     <ControlTemplate.Triggers>
+                        <Trigger Property="IsKeyboardFocused" Value="True"><Setter Property="BorderBrush" Value="#FACC15" /></Trigger>
                         <Trigger Property="IsMouseOver" Value="True">
                             <Setter Property="Background" Value="#334155" />
                             <Setter Property="BorderBrush" Value="{StaticResource AccentCyanBrush}" />

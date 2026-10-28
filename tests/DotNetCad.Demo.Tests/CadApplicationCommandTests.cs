@@ -1,3 +1,4 @@
+using DotNetCad.Core.Editor;
 using System.IO;
 using System.Threading;
 using DotNetCad.Core.Entities;
@@ -111,7 +112,7 @@ public class CadApplicationCommandTests
                 viewModel.MouseWorldX = 10.5;
                 viewModel.MouseWorldY = 20.5;
                 viewModel.AddTextPromptCommand.Execute(null);
-                Assert.Contains(viewModel.Document.Entities, e => e is CadText text && text.Position.X == 10.5 && text.Position.Y == 20.5);
+                Assert.Equal(CadToolType.Text, viewModel.ActiveTool);
 
                 // Test DeleteSelectedCommand
                 var entity = viewModel.Document.Entities.First();
@@ -126,26 +127,21 @@ public class CadApplicationCommandTests
                 var testLine = Assert.IsType<CadLine>(viewModel.Document.Entities.Last());
                 testLine.IsSelected = true;
 
-                // Move (+1.0m on X)
-                viewModel.MoveSelectedCommand.Execute(null);
-                Assert.Equal(1.0, testLine.StartPoint.X);
-                Assert.Equal(5.0, testLine.EndPoint.X);
-
-                // Copy (+1.0m on X, +1.0m on Y)
-                var countBeforeCopy = viewModel.Document.Entities.Count;
-                viewModel.CopySelectedCommand.Execute(null);
-                Assert.Equal(countBeforeCopy + 1, viewModel.Document.Entities.Count);
-
-                // Rotate (90 degrees around center)
-                viewModel.RotateSelectedCommand.Execute(null);
-
-                // Mirror (vertical axis)
-                viewModel.MirrorSelectedCommand.Execute(null);
-
-                // Offset (parallel)
-                var countBeforeOffset = viewModel.Document.Entities.Count;
-                viewModel.OffsetSelectedCommand.Execute(null);
-                Assert.Equal(countBeforeOffset + 1, viewModel.Document.Entities.Count);
+                var count = viewModel.Document.Entities.Count;
+                var undoCount = viewModel.UndoManager.UndoCount;
+                foreach (var pair in new[] {
+                    (viewModel.MoveSelectedCommand, CadToolType.Move),
+                    (viewModel.CopySelectedCommand, CadToolType.Copy),
+                    (viewModel.RotateSelectedCommand, CadToolType.Rotate),
+                    (viewModel.MirrorSelectedCommand, CadToolType.Mirror),
+                    (viewModel.OffsetSelectedCommand, CadToolType.Offset) })
+                {
+                    pair.Item1.Execute(null);
+                    Assert.Equal(pair.Item2, viewModel.ActiveTool);
+                    Assert.Equal(count, viewModel.Document.Entities.Count);
+                    Assert.Equal(undoCount, viewModel.UndoManager.UndoCount);
+                    Assert.Equal(0, testLine.StartPoint.X);
+                }
             }
             catch (Exception ex) { error = ex; }
         });

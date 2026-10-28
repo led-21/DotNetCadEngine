@@ -147,6 +147,15 @@ public sealed class CadViewport : FrameworkElement
 
     #endregion
 
+    public static readonly DependencyProperty CommandStatusProperty = DependencyProperty.Register(nameof(CommandStatus),typeof(string),typeof(CadViewport),new PropertyMetadata("Selecione uma ferramenta."));
+    public string CommandStatus { get => (string)GetValue(CommandStatusProperty); private set => SetValue(CommandStatusProperty,value); }
+    private int _textStep;
+    private string _textContent = "";
+    private double _textHeight;
+    private CadText? _textPreview;
+    private string TextPrompt => _textStep switch { 0 => "Texto: digite o conteúdo e Enter.", 1 => "Texto: altura em metros (ex.: 0,25) e Enter.", 2 => "Texto: clique na inserção; Enter aceita o preview. Esc cancela.", _ => "Texto: Enter confirma; Esc cancela." };
+    private CadModificationSession? _modification;
+    private string _parameterText = "";
     private readonly ViewportTransform _transform = new();
     private bool _initialViewportCentered;
 
@@ -227,6 +236,7 @@ public sealed class CadViewport : FrameworkElement
         {
             if (vp.Document.GetLayer(entity.Layer)?.IsVisible == false) entity.IsSelected = false;
         }
+        vp._modification = null;
         vp.UpdateGrips();
         vp.InvalidateVisual();
     }
@@ -234,6 +244,7 @@ public sealed class CadViewport : FrameworkElement
     private static void OnDrawingRevisionChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
         if (d is not CadViewport vp) return;
+        vp._modification = null;
         vp.UpdateGrips();
         vp.InvalidateVisual();
     }
@@ -247,6 +258,12 @@ public sealed class CadViewport : FrameworkElement
         if (d is CadViewport vp)
         {
             vp.ResetDraftState();
+            vp._parameterText = "";
+            vp._textStep = 0; vp._textPreview = null;
+            vp._modification = vp.ActiveTool is CadToolType.Move or CadToolType.Copy or CadToolType.Rotate or CadToolType.Mirror or CadToolType.Offset
+                ? new CadModificationSession(vp.ActiveTool) : null;
+            if (vp._modification != null && vp.Document?.Entities.Any(e => e.IsSelected) == true)
+                vp._modification.Select(vp.Document.Entities);
             vp.Cursor = vp.ActiveTool == CadToolType.Pan ? Cursors.Hand : Cursors.Cross;
             vp.InvalidateVisual();
         }
@@ -281,7 +298,7 @@ public sealed class CadViewport : FrameworkElement
         var selected = Document.Entities.Where(e => e.IsSelected).ToList();
         SelectedCount = selected.Count;
 
-        if (selected.Count == 1)
+        if (selected.Count == 1 && Document.GetLayer(selected[0].Layer)?.IsLocked == false)
         {
             _gripOwnerEntity = selected[0];
             _currentGrips.AddRange(CadGripEngine.GetGripsForEntity(_gripOwnerEntity));
@@ -316,6 +333,26 @@ public sealed class CadViewport : FrameworkElement
             DrawEntities(dc);
         }
 
+        if (_modification != null)
+        {
+            dc.PushOpacity(0.55);
+            DrawEntities(dc, _modification.Preview);
+            dc.Pop();
+            var message = _modification.Prompt + "\n" + _parameterText + "\n" + _modification.Error;
+            var text = new FormattedText(message, CultureInfo.GetCultureInfo("pt-BR"), FlowDirection.LeftToRight,
+                new Typeface("Segoe UI"), 14, Brushes.White, VisualTreeHelper.GetDpi(this).PixelsPerDip);
+            dc.DrawRectangle(Brushes.Black, null, new Rect(8, 8, Math.Min(ActualWidth, text.Width + 16), text.Height + 12));
+            dc.DrawText(text, new Point(16, 14));
+        }
+        if (ActiveTool == CadToolType.Text && _textPreview != null)
+        {
+            dc.PushOpacity(.6); DrawEntities(dc, [_textPreview]); dc.Pop();
+        }
+        CommandStatus = (ActiveTool == CadToolType.Text ? TextPrompt + " " + _parameterText : _modification?.Prompt ??
+            (ActiveTool == CadToolType.Select ? "Clique para selecionar; Shift adiciona; arraste uma janela de seleção." : "Clique no viewport para definir os pontos; Esc cancela."))
+            + " | Captura: " + (Document?.Preferences.IsOsnapEnabled == true ? "objetos" : "livre")
+            + (Document?.Preferences.IsOrthoModeEnabled == true ? " / ortogonal" : "")
+            + (Document?.Preferences.IsPolarTrackingEnabled == true ? " / polar" : "");
         DrawActiveDraft(dc);
         DrawSelectionBox(dc);
         DrawGrips(dc);
@@ -363,10 +400,10 @@ public sealed class CadViewport : FrameworkElement
         dc.DrawLine(yPen, new Point(origin.X, 0), new Point(origin.X, ActualHeight));
     }
 
-    private void DrawEntities(DrawingContext dc)
+    private void DrawEntities(DrawingContext dc, IEnumerable<ICadEntity>? entities = null)
     {
         var doc = Document!;
-        foreach (var entity in doc.Entities)
+        foreach (var entity in entities ?? doc.Entities)
         {
             var layer = doc.GetLayer(entity.Layer);
             if (layer != null && !layer.IsVisible) continue;
@@ -789,7 +826,31 @@ public sealed class CadViewport : FrameworkElement
 
         if (e.ChangedButton == MouseButton.Left)
         {
-            var precisionPt = _currentSnap.Point;
+            var precisionPt = CadSnapEngine.ResolvePrecisionPoint(worldPt, VisibleEntities(),
+                Document?.Preferences ?? new CadPreferences(),
+                CadSnapEngine.ConvertScreenPixelsToMeters(Document?.Preferences.SnapHitSizePixels ?? 10, _transform.Zoom),
+                _modification?.Origin ?? _draftStartPoint).Point;
+            if (ActiveTool == CadToolType.Text)
+            {
+                if (_textStep == 2) { UpdateTextPreview(precisionPt); _textStep = 3; }
+                InvalidateVisual();
+                if (e.RoutedEvent != null) e.Handled = true;
+                return;
+            }
+            if (_modification != null)
+            {
+                if (_modification.Step == 0)
+                {
+                    var hit = CadSelectionEngine.SelectByPoint(VisibleEntities(), worldPt,
+                        CadSnapEngine.ConvertScreenPixelsToMeters(Document!.Preferences.SelectionHitSizePixels, _transform.Zoom));
+                    if (hit != null) hit.IsSelected = !hit.IsSelected;
+                    UpdateGrips();
+                }
+                else _modification.Point(precisionPt);
+                InvalidateVisual();
+                if (e.RoutedEvent != null) e.Handled = true;
+                return;
+            }
 
             if (ActiveTool == CadToolType.Select)
             {
@@ -826,7 +887,7 @@ public sealed class CadViewport : FrameworkElement
         }
 
         var prefs = Document?.Preferences ?? new CadPreferences();
-        Point2D? origin = _draftStartPoint;
+        Point2D? origin = _modification?.Origin ?? _draftStartPoint;
         if (origin == null && _polyDraftPoints.Count > 0)
         {
             origin = _polyDraftPoints[^1];
@@ -846,6 +907,8 @@ public sealed class CadViewport : FrameworkElement
             origin);
 
         _draftCurrentPoint = _currentSnap.Point;
+        _modification?.Hover(_currentSnap.Point);
+        if (ActiveTool == CadToolType.Text && _textStep == 2) UpdateTextPreview(_currentSnap.Point);
 
         if (_isBoxSelecting)
         {
@@ -856,6 +919,7 @@ public sealed class CadViewport : FrameworkElement
 
         if (_isDraggingGrip && _draggingGrip != null && _gripOwnerEntity != null)
         {
+            if (Document?.GetLayer(_gripOwnerEntity.Layer)?.IsLocked != false) { ResetDraftState(); ReleaseMouseCapture(); return; }
             CadGripEngine.ApplyGripMove(_gripOwnerEntity, _draggingGrip, _currentSnap.Point);
             InvalidateVisual();
             return;
@@ -933,11 +997,66 @@ public sealed class CadViewport : FrameworkElement
         e.Handled = true;
     }
 
+    private void UpdateTextPreview(Point2D p)
+    {
+        if (!double.IsFinite(p.X) || !double.IsFinite(p.Y) || Document == null) return;
+        _textPreview = new CadText { Text=_textContent, Height=_textHeight, Position=p, Layer=Document.ActiveLayer,
+            ColorHex=Document.GetLayer(Document.ActiveLayer)?.ColorHex ?? "#38BDF8" };
+    }
+    protected override void OnTextInput(TextCompositionEventArgs e)
+    {
+        if (_modification != null || ActiveTool == CadToolType.Text)
+        {
+            _parameterText += e.Text;
+            e.Handled = true;
+            InvalidateVisual();
+            return;
+        }
+        base.OnTextInput(e);
+    }
+
     protected override void OnKeyDown(KeyEventArgs e)
     {
         base.OnKeyDown(e);
 
         if (Document == null) return;
+
+        if (ActiveTool == CadToolType.Text)
+        {
+            if (e.Key == Key.Escape) { ActiveTool = CadToolType.Select; _textPreview=null; _parameterText=""; }
+            else if (e.Key == Key.Back && _parameterText.Length > 0) _parameterText = _parameterText[..^1];
+            else if (e.Key == Key.Enter)
+            {
+                if (_textStep == 0 && !string.IsNullOrWhiteSpace(_parameterText) && _parameterText.Length <= 500 && !_parameterText.Any(char.IsControl))
+                { _textContent = _parameterText; _parameterText=""; _textStep=1; }
+                else if (_textStep == 1 && double.TryParse(_parameterText.Replace(',', '.'),NumberStyles.Float,CultureInfo.InvariantCulture,out var height) && double.IsFinite(height) && height >= .05)
+                { _textHeight=height; _parameterText=""; _textStep=2; UpdateTextPreview(_currentSnap.Point); }
+                else if (_textStep == 2) _textStep=3;
+                else if (_textStep == 3 && _textPreview != null && UndoManager != null && Document.GetLayer(_textPreview.Layer) is { IsVisible: true, IsLocked: false })
+                { UndoManager.ExecuteAction(new AddEntityAction(Document,_textPreview)); ActiveTool=CadToolType.Select; _textPreview=null; CommandManager.InvalidateRequerySuggested(); }
+            }
+            e.Handled=true; InvalidateVisual(); return;
+        }
+        if (_modification != null && e.Key is not (Key.F8 or Key.F10 or Key.F3))
+        {
+            if (e.Key == Key.Escape) { _modification = null; _parameterText = ""; ActiveTool = CadToolType.Select; }
+            else if (e.Key == Key.Back && _parameterText.Length > 0) _parameterText = _parameterText[..^1];
+            else if (e.Key == Key.Enter)
+            {
+                if (_modification.Step == 0) _modification.Select(Document.Entities);
+                else if (_parameterText.Length > 0)
+                {
+                    if (_modification.Input(_parameterText)) _parameterText = "";
+                }
+                else if (_modification.Step == 2) _modification.Point(_currentSnap.Point);
+                else if (UndoManager != null && _modification.Confirm(Document, UndoManager))
+                {
+                    _modification = null; ActiveTool = CadToolType.Select; UpdateGrips();
+                    CommandManager.InvalidateRequerySuggested();
+                }
+            }
+            e.Handled = true; InvalidateVisual(); return;
+        }
 
         if (e.Key == Key.F8)
         {
@@ -967,7 +1086,7 @@ public sealed class CadViewport : FrameworkElement
         else if (e.Key == Key.Delete)
         {
             var toDelete = Document.Entities.Where(ent => ent.IsSelected).ToList();
-            if (toDelete.Count > 0 && UndoManager != null)
+            if (toDelete.Count > 0 && UndoManager != null && toDelete.All(ent => Document.GetLayer(ent.Layer)?.IsLocked == false))
             {
                 var actions = toDelete.Select(ent => new DeleteEntityAction(Document, ent)).ToList();
                 UndoManager.ExecuteAction(new CompositeUndoableAction(actions, $"Delete {toDelete.Count} entities"));
@@ -1003,7 +1122,7 @@ public sealed class CadViewport : FrameworkElement
         var gripTol = CadSnapEngine.ConvertScreenPixelsToMeters(Document.Preferences.GripHitSizePixels, _transform.Zoom);
         var hitGrip = CadGripEngine.HitTestGrips(_currentGrips, worldPt, gripTol);
 
-        if (hitGrip != null)
+        if (hitGrip != null && _gripOwnerEntity != null && Document.GetLayer(_gripOwnerEntity.Layer)?.IsLocked == false)
         {
             _isDraggingGrip = true;
             _draggingGrip = hitGrip;
@@ -1039,7 +1158,7 @@ public sealed class CadViewport : FrameworkElement
 
     private void HandleToolMouseDown(Point2D pt)
     {
-        if (Document == null) return;
+        if (Document == null || Document.GetLayer(Document.ActiveLayer) is not { IsVisible: true, IsLocked: false }) return;
 
         var activeLayer = Document.ActiveLayer;
         var layerObj = Document.GetLayer(activeLayer);
@@ -1150,7 +1269,7 @@ public sealed class CadViewport : FrameworkElement
                     StartPoint = _dimP1,
                     EndPoint = _dimP2,
                     OffsetPoint = pt,
-                    Layer = "Dimensions",
+                    Layer = activeLayer,
                     ColorHex = "#EF4444"
                 };
                 UndoManager?.ExecuteAction(new AddEntityAction(Document, dim));
@@ -1165,6 +1284,7 @@ public sealed class CadViewport : FrameworkElement
 
         var activeLayer = Document.ActiveLayer;
         var color = Document.GetLayer(activeLayer)?.ColorHex ?? "#38BDF8";
+        if (Document.GetLayer(activeLayer) is not { IsVisible: true, IsLocked: false }) return;
         var poly = new CadPolyline(_polyDraftPoints, isClosed, activeLayer, color);
 
         UndoManager?.ExecuteAction(new AddEntityAction(Document, poly));

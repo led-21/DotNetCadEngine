@@ -52,6 +52,9 @@ public static class DxfCadImporter
             }
         }
 
+        if(document.GetLayer(document.ActiveLayer) is not { IsVisible:true,IsLocked:false })
+            document.ActiveLayer=document.Layers.FirstOrDefault(l=>l.IsVisible && !l.IsLocked)?.Name
+                ?? throw new ArgumentException("DXF não contém camada utilizável.");
         return document;
     }
 
@@ -89,27 +92,22 @@ public static class DxfCadImporter
             {
                 string layerName = "0";
                 int colorAci = 7;
+                bool visible=true, locked=false;
                 i++;
 
                 while (i < pairs.Count && pairs[i].Code != 0)
                 {
                     if (pairs[i].Code == 2) layerName = pairs[i].Value;
-                    if (pairs[i].Code == 62 && int.TryParse(pairs[i].Value, out int c)) colorAci = Math.Abs(c);
+                    if (pairs[i].Code == 62 && int.TryParse(pairs[i].Value, out int c)) { colorAci = Math.Abs(c); visible=c>=0; }
+                    if (pairs[i].Code == 70 && int.TryParse(pairs[i].Value,out int flags)) locked=(flags & 4)!=0;
                     i++;
                 }
 
                 if (!string.IsNullOrWhiteSpace(layerName))
                 {
                     var existing = document.Layers.FirstOrDefault(l => l.Name.Equals(layerName, StringComparison.OrdinalIgnoreCase));
-                    if (existing == null)
-                    {
-                        document.Layers.Add(new CadLayer
-                        {
-                            Name = layerName,
-                            ColorHex = DxfCadExporter.AciToColorHex(colorAci),
-                            IsProtected = layerName == "0"
-                        });
-                    }
+                    if(existing == null) { existing=new CadLayer { Name=layerName, IsProtected=layerName=="0" };document.Layers.Add(existing); }
+                    existing.ColorHex=DxfCadExporter.AciToColorHex(colorAci); existing.IsVisible=visible;existing.IsLocked=locked;
                 }
                 continue;
             }

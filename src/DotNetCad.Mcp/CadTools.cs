@@ -38,24 +38,48 @@ public sealed class CadTools(CadMcpBridgeClient bridge)
         double offsetX, double offsetY) =>
         await Command($"DIM {Point(x1, y1)} {Point(x2, y2)} {Point(offsetX, offsetY)}");
 
-    [McpServerTool, Description("Select an existing visible layer or create a new layer for subsequent CAD entities. Names cannot contain spaces.")]
-    public async Task<string> SetLayer(string name) => await Command($"LAYER {name}");
+    [McpServerTool, Description("Select an existing visible layer or create a new layer for subsequent CAD entities. Names may contain spaces; the layer must be unlocked.")]
+    public async Task<string> SetLayer(string name) => await Command($"LAYER {Q(name)}");
 
     [McpServerTool, Description("Show an existing drawing layer. The change can be undone.")]
-    public async Task<string> ShowLayer(string name) => await Command($"LAYER SHOW {name}");
+    public async Task<string> ShowLayer(string name) => await Command($"LAYER SHOW {Q(name)}");
 
     [McpServerTool, Description("Hide an existing drawing layer. If it is active, another visible layer becomes active. The change can be undone.")]
-    public async Task<string> HideLayer(string name) => await Command($"LAYER HIDE {name}");
+    public async Task<string> HideLayer(string name) => await Command($"LAYER HIDE {Q(name)}");
 
-    [McpServerTool, Description("Set a layer color using #RRGGBB. Existing entities using the previous layer color are recolored; custom entity colors are preserved. The change can be undone.")]
+    [McpServerTool, Description("Set a layer color using #RRGGBB. Existing explicit entity colors are preserved; equality does not imply ByLayer. The change can be undone.")]
     public async Task<string> SetLayerColor(string name, string colorHex) =>
-        await Command($"LAYER COLOR {name} {colorHex}");
+        await Command($"LAYER COLOR {Q(name)} {colorHex}");
+
+    [McpServerTool, Description("Create a layer without activating it. Names may contain spaces.")]
+    public async Task<string> CreateLayer(string name) => await Command($"LAYER CREATE {Q(name)}");
+    [McpServerTool, Description("Rename an unprotected unlocked layer and update all entity references atomically.")]
+    public async Task<string> RenameLayer(string name,string newName) => await Command($"LAYER RENAME {Q(name)} {Q(newName)}");
+    [McpServerTool, Description("Lock or unlock a layer; locking the active layer selects a visible unlocked successor.")]
+    public async Task<string> SetLayerLocked(string name,bool locked) => await Command($"LAYER {(locked ? "LOCK" : "UNLOCK")} {Q(name)}");
+    [McpServerTool, Description("Delete an unprotected unlocked layer. Explicit mode: CANCEL, ENTITIES (delete contents), or TRANSFER (requires destination). One undo restores everything.")]
+    public async Task<string> DeleteLayer(string name,string mode="CANCEL",string? destination=null)
+    {
+        if(mode.ToUpperInvariant() is not ("CANCEL" or "ENTITIES" or "TRANSFER"))throw new ArgumentException("Invalid deletion mode.");
+        return await Command($"LAYER DELETE {Q(name)} {mode.ToUpperInvariant()}"+(destination==null?"":" "+Q(destination)));
+    }
+    [McpServerTool, Description("Transfer the UI selection or supplied space-separated entity IDs into a visible unlocked layer. Rejects the entire batch if any source is locked.")]
+    public async Task<string> TransferEntitiesToLayer(string name,string? entityIds=null)
+    {
+        if(entityIds!=null && entityIds.Split(' ',StringSplitOptions.RemoveEmptyEntries).Any(id=>!Guid.TryParse(id,out _)))throw new ArgumentException("Invalid entity IDs.");
+        return await Command($"LAYER TRANSFER {Q(name)}"+(entityIds==null?"":" "+entityIds));
+    }
+    private static string Q(string name)
+    {
+        if(string.IsNullOrWhiteSpace(name) || name.Any(char.IsControl) || name.Contains('"'))throw new ArgumentException("Invalid layer name.");
+        return "\""+name+"\"";
+    }
 
     [McpServerTool, Description("Read precise geometry, layer, color and style properties for one entity ID from describe_drawing.")]
     public async Task<string> GetEntityProperties(string entityId) => await Command($"PROPERTIES {entityId}");
 
     [McpServerTool, Description("Read visibility, color, active status and entity count for an existing layer.")]
-    public async Task<string> GetLayerProperties(string name) => await Command($"PROPERTIES LAYER {name}");
+    public async Task<string> GetLayerProperties(string name) => await Command($"PROPERTIES LAYER {Q(name)}");
 
     [McpServerTool, Description("Remove the part of a line between two points on it. The original line is replaced by up to two lines; use describe_drawing to get its ID and endpoints.")]
     public async Task<string> BreakLine(string lineId, double x1, double y1, double x2, double y2) =>

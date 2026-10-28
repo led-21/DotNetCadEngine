@@ -288,7 +288,7 @@ public class CadCommandProcessorTests
     }
 
     [Fact]
-    public void LayerColorRecolorsByLayerEntitiesButPreservesCustomColors()
+    public void LayerColorPreservesAllExplicitEntityColors()
     {
         var document = new CadDocument();
         var history = new UndoRedoManager();
@@ -300,13 +300,13 @@ public class CadCommandProcessorTests
 
         Assert.True(CadCommandProcessor.Execute(document, history, "LAYER COLOR Geometry #12ab34").Success);
         Assert.Equal("#12AB34", document.GetLayer("Geometry")!.ColorHex);
-        Assert.Equal("#12AB34", byLayer.ColorHex);
+        Assert.Equal(color, byLayer.ColorHex);
         Assert.Equal("#AA0000", custom.ColorHex);
         Assert.True(CadCommandProcessor.Execute(document, history, "UNDO").Success);
         Assert.Equal(color, document.GetLayer("Geometry")!.ColorHex);
         Assert.Equal(color, byLayer.ColorHex);
         Assert.True(CadCommandProcessor.Execute(document, history, "REDO").Success);
-        Assert.Equal("#12AB34", byLayer.ColorHex);
+        Assert.Equal(color, byLayer.ColorHex);
     }
 
     [Fact]

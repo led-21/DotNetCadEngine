@@ -88,10 +88,11 @@ public sealed class CadMcpPipeHost : IDisposable
                 {
                     doc.Title,
                     doc.ActiveLayer,
-                    Layers = doc.Layers.Select(l => new { l.Name, l.ColorHex, l.IsVisible }),
+                    Layers = doc.Layers.Select(l => new { l.Name, l.ColorHex, l.IsVisible, l.IsLocked, l.IsProtected, EntityCount=doc.Entities.Count(e=>e.Layer.Equals(l.Name,StringComparison.OrdinalIgnoreCase)) }),
                     Entities = doc.Entities.Select(e => new
                     {
                         e.Id,
+                        e.IsSelected,
                         Type = e.EntityType.ToString(),
                         e.Layer,
                         e.ColorHex,

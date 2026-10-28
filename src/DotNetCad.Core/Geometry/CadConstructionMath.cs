@@ -8,7 +8,8 @@ public static class CadConstructionMath
         var dy = p2.Y - p1.Y;
         var len = Math.Sqrt((dx * dx) + (dy * dy));
 
-        if (len < 1e-6) return (p1, p2);
+        if (!double.IsFinite(distance) || !double.IsFinite(len) || len < 1e-6)
+            throw new ArgumentException("Offset requer segmento finito e não degenerado.");
 
         double nx, ny;
         if (toLeft)
@@ -30,7 +31,9 @@ public static class CadConstructionMath
 
     public static List<Point2D> OffsetPolygon(IReadOnlyList<Point2D> vertices, double distance)
     {
-        if (vertices == null || vertices.Count < 3) return vertices?.ToList() ?? [];
+        if (vertices == null || vertices.Count < 3 || !double.IsFinite(distance))
+            throw new ArgumentException("Offset requer polígono convexo com pelo menos três vértices finitos.");
+        ValidateConvex(vertices);
 
         int n = vertices.Count;
         double signedArea = 0.0;
@@ -64,10 +67,42 @@ public static class CadConstructionMath
             var line2 = offsetLines[i];
 
             var inter = FindLineIntersection(line1.P1, line1.P2, line2.P1, line2.P2);
-            result.Add(inter ?? line2.P1);
+            if (inter == null) throw new ArgumentException("Canto colinear não suportado no offset.");
+            result.Add(inter.Value);
         }
 
+        ValidateConvex(result);
+        // Every resulting edge must retain its direction. This rejects inward collapse,
+        // including the case where both dimensions cross through zero.
+        for (int i = 0; i < n; i++)
+        {
+            var j = (i + 1) % n;
+            if ((result[j].X-result[i].X)*(vertices[j].X-vertices[i].X) +
+                (result[j].Y-result[i].Y)*(vertices[j].Y-vertices[i].Y) <= 1e-9)
+                throw new ArgumentException("Offset colapsa ou inverte arestas.");
+        }
         return result;
+    }
+
+    private static void ValidateConvex(IReadOnlyList<Point2D> points)
+    {
+        double sign = 0;
+        for (int i = 0; i < points.Count; i++)
+        {
+            var a = points[i]; var b = points[(i+1)%points.Count]; var c = points[(i+2)%points.Count];
+            if (!double.IsFinite(a.X) || !double.IsFinite(a.Y) || a.DistanceTo(b) < 1e-6)
+                throw new ArgumentException("Vértice inválido ou segmento degenerado.");
+            var cross = (b.X-a.X)*(c.Y-b.Y)-(b.Y-a.Y)*(c.X-b.X);
+            if (!double.IsFinite(cross) || Math.Abs(cross) < 1e-9 || sign != 0 && Math.Sign(cross) != sign)
+                throw new ArgumentException("Offset suporta apenas polígonos estritamente convexos, sem cantos colineares.");
+            sign = Math.Sign(cross);
+            for (int j = i+2; j < points.Count; j++)
+            {
+                if ((j+1)%points.Count == i) continue;
+                if (FindSegmentIntersection(a,b,points[j],points[(j+1)%points.Count]) != null)
+                    throw new ArgumentException("Polígono com auto-interseção não suportado.");
+            }
+        }
     }
 
     public static (Point2D Start, Point2D End)? ExtendSegment(Point2D p1, Point2D p2, Point2D boundA, Point2D boundB)

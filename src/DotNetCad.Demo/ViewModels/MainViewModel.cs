@@ -27,8 +27,38 @@ public sealed class MainViewModel : ObservableObject
     private int _drawingRevision;
     private string _consoleInput = string.Empty;
     private string? _nativePath;
-    private bool _hasUnsavedChanges;
-    private bool _suppressDirtyTracking;
+    private string? _savedContent;
+    public bool HasUnsavedChanges
+    {
+        get
+        {
+            try { return _savedContent == null || CaptureContent() != _savedContent; }
+            catch (Exception ex) when (ex is ArgumentException or System.Text.Json.JsonException or InvalidOperationException)
+            { return true; } // Invalid geometry must never bypass the pending-changes guard.
+        }
+    }
+    // Injectable UI choices also allow cancellation/failure paths to be tested without dialogs.
+    public Func<MessageBoxResult> UnsavedChangesPrompt { get; set; } = () => MessageBox.Show(
+        "Salvar as alterações antes de continuar?\nSim: Salvar · Não: Descartar · Cancelar: permanecer no desenho",
+        "Alterações não salvas", MessageBoxButton.YesNoCancel, MessageBoxImage.Warning);
+    public Func<string?>? SavePathPrompt { get; set; }
+    private string CaptureContent()
+    {
+        var node = System.Text.Json.Nodes.JsonNode.Parse(CadDrawingSerializer.Serialize(Document))!;
+        foreach (var entity in node["Entities"]!.AsArray()) entity!["Data"]!.AsObject().Remove("IsSelected");
+        return node.ToJsonString();
+    }
+    public bool ConfirmPendingChanges()
+    {
+        if (!HasUnsavedChanges) return true;
+        return UnsavedChangesPrompt() switch
+        {
+            MessageBoxResult.No => true,
+            MessageBoxResult.Yes => SaveDrawingInteractively(),
+            _ => false
+        };
+    }
+
 
     public Func<bool>? ZoomExtentsHandler { get; set; }
     public Action? ResetViewHandler { get; set; }
@@ -48,7 +78,7 @@ public sealed class MainViewModel : ObservableObject
         set => SetProperty(ref _consoleInput, value);
     }
 
-    public ObservableCollection<string> ConsoleHistory { get; } = ["CAD console ready. Type HELP for commands."];
+    public ObservableCollection<string> ConsoleHistory { get; } = ["Console CAD pronto. Digite HELP para ver os comandos."];
 
     public int LayerRevision
     {
@@ -70,6 +100,7 @@ public sealed class MainViewModel : ObservableObject
                 OnPropertyChanged(nameof(IsOrthoEnabled));
                 OnPropertyChanged(nameof(IsPolarEnabled));
                 OnPropertyChanged(nameof(IsOsnapEnabled));
+                OnPropertyChanged(nameof(OrthoLabel)); OnPropertyChanged(nameof(PolarLabel)); OnPropertyChanged(nameof(OsnapLabel));
             }
         }
     }
@@ -77,9 +108,15 @@ public sealed class MainViewModel : ObservableObject
     public CadToolType ActiveTool
     {
         get => _activeTool;
-        set => SetProperty(ref _activeTool, value);
+        set { if (SetProperty(ref _activeTool, value)) OnPropertyChanged(nameof(ActiveToolLabel)); }
     }
 
+    public string ActiveToolLabel => ActiveTool switch {
+        CadToolType.Select => "Selecionar", CadToolType.Line => "Linha", CadToolType.Polyline => "Polilinha",
+        CadToolType.Rectangle => "Retângulo", CadToolType.Circle => "Círculo", CadToolType.Arc => "Arco",
+        CadToolType.Dimension => "Cota", CadToolType.Move => "Mover", CadToolType.Copy => "Copiar",
+        CadToolType.Rotate => "Rotacionar", CadToolType.Mirror => "Espelhar", CadToolType.Offset => "Offset",
+        CadToolType.Text => "Texto", CadToolType.Pan => "Mover vista", _ => ActiveTool.ToString() };
     public UndoRedoManager UndoManager { get; } = new();
 
     public double MouseWorldX
@@ -109,6 +146,10 @@ public sealed class MainViewModel : ObservableObject
         }
     }
 
+    public string OrthoLabel => IsOrthoEnabled ? "ativo" : "inativo";
+    public string PolarLabel => IsPolarEnabled ? "ativo" : "inativo";
+    public string OsnapLabel => IsOsnapEnabled ? "ativa" : "inativa";
+
     public bool IsOrthoEnabled
     {
         get => Document.Preferences.IsOrthoModeEnabled;
@@ -117,7 +158,8 @@ public sealed class MainViewModel : ObservableObject
             if (Document.Preferences.IsOrthoModeEnabled != value)
             {
                 Document.Preferences.IsOrthoModeEnabled = value;
-                _hasUnsavedChanges = true;
+                OnPropertyChanged(nameof(OrthoLabel));
+
                 OnPropertyChanged();
             }
         }
@@ -131,7 +173,8 @@ public sealed class MainViewModel : ObservableObject
             if (Document.Preferences.IsPolarTrackingEnabled != value)
             {
                 Document.Preferences.IsPolarTrackingEnabled = value;
-                _hasUnsavedChanges = true;
+                OnPropertyChanged(nameof(PolarLabel));
+
                 OnPropertyChanged();
             }
         }
@@ -145,13 +188,37 @@ public sealed class MainViewModel : ObservableObject
             if (Document.Preferences.IsOsnapEnabled != value)
             {
                 Document.Preferences.IsOsnapEnabled = value;
-                _hasUnsavedChanges = true;
+                OnPropertyChanged(nameof(OsnapLabel));
+
                 OnPropertyChanged();
             }
         }
     }
 
     public ObservableCollection<LayerItemViewModel> Layers { get; } = [];
+    public System.ComponentModel.ICollectionView FilteredLayers => System.Windows.Data.CollectionViewSource.GetDefaultView(Layers);
+    private string _layerFilter = "";
+    public string LayerFilter { get=>_layerFilter; set { if(SetProperty(ref _layerFilter,value)) ApplyLayerFilter(); } }
+    private LayerItemViewModel? _selectedLayer;
+    public LayerItemViewModel? SelectedLayer { get=>_selectedLayer; set=>SetProperty(ref _selectedLayer,value); }
+    private void ApplyLayerFilter() { FilteredLayers.Filter=o=>o is LayerItemViewModel l && l.Name.Contains(_layerFilter,StringComparison.OrdinalIgnoreCase); }
+    public CadCommandResult OperateLayer(string op,string name,string? argument=null,LayerDeleteMode mode=LayerDeleteMode.Cancel)
+    {
+        var result=CadLayerOperations.Execute(Document,UndoManager,op,name,argument,mode);
+        AppendConsole((result.Success?"CAD: ":"ERRO: ")+result.Message);
+        if(result.Success && result.LayersChanged) { DrawingRevision++;RefreshLayers(); }
+        return result;
+    }
+    private void RenameLayer(string name)
+    {
+        var next=LayerDialogs.Rename(name);if(next!=null)OperateLayer("RENAME",name,next);
+    }
+    private void DeleteLayer(string name)
+    {
+        var count=Document.Entities.Count(e=>e.Layer.Equals(name,StringComparison.OrdinalIgnoreCase));
+        var choice=LayerDialogs.Delete(name,count,Document.Layers.Where(l=>!l.Name.Equals(name,StringComparison.OrdinalIgnoreCase) && l.IsVisible && !l.IsLocked).Select(l=>l.Name));
+        if(choice.Mode!=LayerDeleteMode.Cancel)OperateLayer("DELETE",name,choice.Target,choice.Mode);
+    }
 
     public ICommand SetToolCommand { get; }
     public ICommand UndoCommand { get; }
@@ -189,11 +256,7 @@ public sealed class MainViewModel : ObservableObject
 
     public MainViewModel()
     {
-        UndoManager.PropertyChanged += (_, args) =>
-        {
-            if (!_suppressDirtyTracking && args.PropertyName == nameof(UndoRedoManager.UndoCount))
-                _hasUnsavedChanges = true;
-        };
+        UndoManager.PropertyChanged += (_, e) => { if(e.PropertyName == nameof(UndoRedoManager.UndoCount)) foreach(var item in Layers)item.RefreshCounts(); };
         SetToolCommand = new RelayCommand(p =>
         {
             if (p is CadToolType tool) ActiveTool = tool;
@@ -213,14 +276,14 @@ public sealed class MainViewModel : ObservableObject
         SaveDrawingCommand = new RelayCommand(SaveDrawingFromToolbar);
         OpenDrawingCommand = new RelayCommand(OpenDrawingFromToolbar);
         NewDrawingCommand = new RelayCommand(NewDrawingFromToolbar);
-        LoadSampleDrawingCommand = new RelayCommand(LoadSampleDrawing);
+        LoadSampleDrawingCommand = new RelayCommand(() => { if (ConfirmPendingChanges()) LoadSampleDrawing(); });
         ZoomExtentsCommand = new RelayCommand(() =>
         {
             if (ZoomExtentsHandler?.Invoke() == true)
                 AppendConsole("CAD: Desenho ajustado ao viewport.");
             else
                 AppendConsole("CAD: Nenhum elemento visível para enquadrar.");
-        });
+        }, () => Document.Entities.Any(e => Document.GetLayer(e.Layer)?.IsVisible != false));
         ResetViewCommand = new RelayCommand(() =>
         {
             ResetViewHandler?.Invoke();
@@ -231,11 +294,11 @@ public sealed class MainViewModel : ObservableObject
         AddLayerCommand = new RelayCommand(AddLayerFromInput);
         ShowAllLayersCommand = new RelayCommand(ShowAllLayers);
         AddTextPromptCommand = new RelayCommand(AddTextPrompt);
-        MoveSelectedCommand = new RelayCommand(MoveSelectedEntities, () => Document.Entities.Any(e => e.IsSelected));
-        CopySelectedCommand = new RelayCommand(CopySelectedEntities, () => Document.Entities.Any(e => e.IsSelected));
-        RotateSelectedCommand = new RelayCommand(RotateSelectedEntities, () => Document.Entities.Any(e => e.IsSelected));
-        MirrorSelectedCommand = new RelayCommand(MirrorSelectedEntities, () => Document.Entities.Any(e => e.IsSelected));
-        OffsetSelectedCommand = new RelayCommand(OffsetSelectedEntities, () => Document.Entities.Any(e => e.IsSelected));
+        MoveSelectedCommand = new RelayCommand(MoveSelectedEntities);
+        CopySelectedCommand = new RelayCommand(CopySelectedEntities);
+        RotateSelectedCommand = new RelayCommand(RotateSelectedEntities);
+        MirrorSelectedCommand = new RelayCommand(MirrorSelectedEntities);
+        OffsetSelectedCommand = new RelayCommand(OffsetSelectedEntities);
         ExecuteConsoleCommand = new RelayCommand(() =>
         {
             var input = ConsoleInput;
@@ -248,13 +311,18 @@ public sealed class MainViewModel : ObservableObject
 
     private void RefreshLayers()
     {
+        var selectedName=SelectedLayer?.Name;
         Layers.Clear();
         foreach (var l in Document.Layers)
         {
-            var item = new LayerItemViewModel(l, OnLayerVisibilityChanged, SetActiveLayer);
+            var name=l.Name;
+            var item = new LayerItemViewModel(l,()=>Document.Entities.Count(e=>e.Layer.Equals(name,StringComparison.OrdinalIgnoreCase)),
+                (op,arg,mode)=>OperateLayer(op,name,arg,mode),()=>RenameLayer(name),()=>DeleteLayer(name));
             item.SetActive(l.Name.Equals(Document.ActiveLayer, StringComparison.OrdinalIgnoreCase));
             Layers.Add(item);
         }
+        SelectedLayer=Layers.FirstOrDefault(l=>l.Name==selectedName);
+        ApplyLayerFilter();
         LayerRevision++;
     }
 
@@ -264,26 +332,6 @@ public sealed class MainViewModel : ObservableObject
         else UndoManager.Redo();
         DrawingRevision++;
         RefreshLayers();
-    }
-
-    private void OnLayerVisibilityChanged()
-    {
-        _hasUnsavedChanges = true;
-        if (Document.GetLayer(Document.ActiveLayer)?.IsVisible == false)
-        {
-            var next = Document.Layers.FirstOrDefault(layer => layer.IsVisible);
-            if (next != null) SetActiveLayer(next.Name);
-        }
-        LayerRevision++;
-    }
-
-    private void SetActiveLayer(string name)
-    {
-        var layer = Document.GetLayer(name);
-        if (layer == null || !layer.IsVisible) return;
-        if (!Document.ActiveLayer.Equals(layer.Name, StringComparison.OrdinalIgnoreCase)) _hasUnsavedChanges = true;
-        Document.ActiveLayer = layer.Name;
-        foreach (var item in Layers) item.SetActive(item.Name.Equals(layer.Name, StringComparison.OrdinalIgnoreCase));
     }
 
     public CadCommandResult RunCadCommand(string input, bool fromMcp = false)
@@ -297,7 +345,7 @@ public sealed class MainViewModel : ObservableObject
         if (result.LayersChanged)
         {
             RefreshLayers();
-            _hasUnsavedChanges = true;
+
         }
         return result;
     }
@@ -313,7 +361,7 @@ public sealed class MainViewModel : ObservableObject
         if (input.Equals("NEW", StringComparison.OrdinalIgnoreCase) ||
             input.Equals("NEW DISCARD", StringComparison.OrdinalIgnoreCase))
         {
-            if (_hasUnsavedChanges && !input.EndsWith("DISCARD", StringComparison.OrdinalIgnoreCase))
+            if (HasUnsavedChanges && !input.EndsWith("DISCARD", StringComparison.OrdinalIgnoreCase))
                 return new(false, "Unsaved changes. Use SAVE first, or NEW DISCARD to replace this drawing.");
             ReplaceDocument(new CadDocument(), null, false);
             ResetViewHandler?.Invoke();
@@ -327,7 +375,7 @@ public sealed class MainViewModel : ObservableObject
             var argument = input[5..].Trim();
             var discard = argument.StartsWith("DISCARD ", StringComparison.OrdinalIgnoreCase);
             if (discard) argument = argument[8..].Trim();
-            if (_hasUnsavedChanges && !discard)
+            if (HasUnsavedChanges && !discard)
                 return new(false, "Unsaved changes. Use SAVE first, or OPEN DISCARD path to replace this drawing.");
             return OpenDrawing(ParsePath(argument));
         }
@@ -357,7 +405,7 @@ public sealed class MainViewModel : ObservableObject
             File.WriteAllText(temporaryPath, content);
             File.Move(temporaryPath, fullPath, overwrite: true);
             _nativePath = fullPath;
-            _hasUnsavedChanges = false;
+            _savedContent = CaptureContent();
             return new(true, $"Saved drawing to {fullPath}.");
         }
         catch (Exception ex) when (ex is IOException or InvalidDataException or UnauthorizedAccessException or ArgumentException or NotSupportedException or System.Text.Json.JsonException)
@@ -376,7 +424,7 @@ public sealed class MainViewModel : ObservableObject
         }
     }
 
-    private CadCommandResult OpenDrawing(string? path)
+    private CadCommandResult OpenDrawing(string? path, bool protectPending = false)
     {
         if (path == null) return new(false, "Use OPEN path.cad or OPEN path.dxf.");
         try
@@ -386,10 +434,22 @@ public sealed class MainViewModel : ObservableObject
             if (extension is not (".cad" or ".dxf"))
                 return new(false, "OPEN supports .cad and .dxf files.");
             var content = File.ReadAllText(fullPath);
+            if (extension == ".dxf")
+            {
+                var lines = content.Replace("\r", "").Split('\n').Select(line => line.Trim()).ToList();
+                while (lines.Count > 0 && lines[^1].Length == 0) lines.RemoveAt(lines.Count-1);
+                if (lines.Count < 6 || lines.Count % 2 != 0 || lines[^2] != "0" || lines[^1] != "EOF" ||
+                    !Enumerable.Range(0, lines.Count/2).All(i => int.TryParse(lines[2*i], out _)) ||
+                    !lines.Contains("SECTION") || !lines.Contains("ENDSEC"))
+                    return new(false, "DXF inválido ou incompleto: estrutura SECTION/ENDSEC/EOF ausente.");
+            }
             var opened = extension == ".cad"
                 ? CadDrawingSerializer.Deserialize(content)
                 : DxfCadImporter.ImportFromDxf(content, Path.GetFileName(fullPath));
+            // Reuse native validation for imported entities before committing replacement.
+            opened = CadDrawingSerializer.Deserialize(CadDrawingSerializer.Serialize(opened));
             opened.Title = Path.GetFileName(fullPath);
+            if (protectPending && !ConfirmPendingChanges()) return new(false, "Operação cancelada; desenho preservado.");
             ReplaceDocument(opened, extension == ".cad" ? fullPath : null, extension == ".dxf");
             ZoomExtentsHandler?.Invoke();
             return new(true, $"Opened {opened.Entities.Count} entities from {fullPath}.", DrawingChanged: true);
@@ -402,15 +462,12 @@ public sealed class MainViewModel : ObservableObject
 
     private void ReplaceDocument(CadDocument document, string? nativePath, bool hasUnsavedChanges)
     {
-        _suppressDirtyTracking = true;
-        try
-        {
-            Document = document;
-            UndoManager.Clear();
-            _nativePath = nativePath;
-            _hasUnsavedChanges = hasUnsavedChanges;
-        }
-        finally { _suppressDirtyTracking = false; }
+        Document = document;
+        UndoManager.Clear();
+        _nativePath = nativePath;
+        _savedContent = hasUnsavedChanges ? null : CaptureContent();
+        ActiveTool = CadToolType.Select;
+        SelectedCount = 0;
     }
 
     public void AppendConsole(string line)
@@ -423,13 +480,14 @@ public sealed class MainViewModel : ObservableObject
     private void DeleteSelectedEntities()
     {
         var toDelete = Document.Entities.Where(e => e.IsSelected).ToList();
+        if (toDelete.Any(e=>Document.GetLayer(e.Layer)?.IsLocked!=false)) { AppendConsole("ERRO: seleção contém camada bloqueada.");return; }
         if (toDelete.Count > 0)
         {
             var actions = toDelete.Select(e => (IUndoableAction)new DeleteEntityAction(Document, e)).ToList();
             UndoManager.ExecuteAction(new CompositeUndoableAction(actions, $"Delete {toDelete.Count} entities"));
             SelectedCount = 0;
             DrawingRevision++;
-            _hasUnsavedChanges = true;
+
             AppendConsole($"CAD: {toDelete.Count} entidade(s) excluída(s).");
         }
         else
@@ -455,130 +513,19 @@ public sealed class MainViewModel : ObservableObject
             AppendConsole("CAD ERROR: Informe o nome da nova camada.");
             return;
         }
-        RunCadCommand($"LAYER {name}");
+        OperateLayer("CREATE",name);
         NewLayerInput = string.Empty;
     }
 
-    private void ShowAllLayers()
-    {
-        foreach (var layer in Document.Layers)
-        {
-            layer.IsVisible = true;
-        }
-        RefreshLayers();
-        _hasUnsavedChanges = true;
-        DrawingRevision++;
-        AppendConsole("CAD: Todas as camadas estão visíveis.");
-    }
+    private void ShowAllLayers() => RunCadCommand("LAYER SHOWALL");
 
-    private void AddTextPrompt()
-    {
-        var x = Math.Round(MouseWorldX, 1);
-        var y = Math.Round(MouseWorldY, 1);
-        RunCadCommand($"TEXT {x};{y} 1.0 Anotação");
-    }
+    private void AddTextPrompt() => ActiveTool = CadToolType.Text;
 
-    private void MoveSelectedEntities()
-    {
-        var selected = Document.Entities.Where(e => e.IsSelected).ToList();
-        if (selected.Count == 0)
-        {
-            AppendConsole("CAD: Selecione ao menos uma entidade para mover (ou use MOVE id dx;dy).");
-            return;
-        }
-
-        var actions = selected.Select(e => (IUndoableAction)new MoveEntityAction(e, 1.0, 0.0)).ToList();
-        UndoManager.ExecuteAction(new CompositeUndoableAction(actions, $"Move {selected.Count} entities"));
-        _hasUnsavedChanges = true;
-        DrawingRevision++;
-        AppendConsole($"CAD: {selected.Count} entidade(s) movida(s) (+1.0m no eixo X).");
-    }
-
-    private void CopySelectedEntities()
-    {
-        var selected = Document.Entities.Where(e => e.IsSelected).ToList();
-        if (selected.Count == 0)
-        {
-            AppendConsole("CAD: Selecione ao menos uma entidade para copiar (ou use COPY id dx;dy).");
-            return;
-        }
-
-        var actions = new List<IUndoableAction>();
-        foreach (var entity in selected)
-        {
-            var copy = entity.Clone();
-            copy.Translate(1.0, 1.0);
-            actions.Add(new AddEntityAction(Document, copy));
-        }
-        UndoManager.ExecuteAction(new CompositeUndoableAction(actions, $"Copy {selected.Count} entities"));
-        _hasUnsavedChanges = true;
-        DrawingRevision++;
-        AppendConsole($"CAD: {selected.Count} cópia(s) gerada(s) (+1.0m, +1.0m).");
-    }
-
-    private void RotateSelectedEntities()
-    {
-        var selected = Document.Entities.Where(e => e.IsSelected).ToList();
-        if (selected.Count == 0)
-        {
-            AppendConsole("CAD: Selecione ao menos uma entidade para rotacionar (ou use ROTATE id x;y angulo).");
-            return;
-        }
-
-        var actions = new List<IUndoableAction>();
-        foreach (var entity in selected)
-        {
-            var center = entity.BoundingBox.Center;
-            actions.Add(new RotateEntityAction(entity, center, 90.0));
-        }
-        UndoManager.ExecuteAction(new CompositeUndoableAction(actions, $"Rotate {selected.Count} entities 90°"));
-        _hasUnsavedChanges = true;
-        DrawingRevision++;
-        AppendConsole($"CAD: {selected.Count} entidade(s) rotacionada(s) em 90° em torno do centro.");
-    }
-
-    private void MirrorSelectedEntities()
-    {
-        var selected = Document.Entities.Where(e => e.IsSelected).ToList();
-        if (selected.Count == 0)
-        {
-            AppendConsole("CAD: Selecione ao menos uma entidade para espelhar (ou use MIRROR id x1;y1 x2;y2).");
-            return;
-        }
-
-        var actions = new List<IUndoableAction>();
-        foreach (var entity in selected)
-        {
-            var center = entity.BoundingBox.Center;
-            var axisP1 = new Point2D(center.X, center.Y - 5.0);
-            var axisP2 = new Point2D(center.X, center.Y + 5.0);
-            actions.Add(new MirrorEntityAction(entity, axisP1, axisP2));
-        }
-        UndoManager.ExecuteAction(new CompositeUndoableAction(actions, $"Mirror {selected.Count} entities"));
-        _hasUnsavedChanges = true;
-        DrawingRevision++;
-        AppendConsole($"CAD: {selected.Count} entidade(s) espelhada(s) no eixo vertical central.");
-    }
-
-    private void OffsetSelectedEntities()
-    {
-        var selected = Document.Entities.Where(e => e.IsSelected).ToList();
-        if (selected.Count == 0)
-        {
-            AppendConsole("CAD: Selecione ao menos uma entidade para criar offset (ou use OFFSET id distancia).");
-            return;
-        }
-
-        var actions = new List<IUndoableAction>();
-        foreach (var entity in selected)
-        {
-            actions.Add(new OffsetEntityAction(Document, entity, 0.5));
-        }
-        UndoManager.ExecuteAction(new CompositeUndoableAction(actions, $"Offset {selected.Count} entities"));
-        _hasUnsavedChanges = true;
-        DrawingRevision++;
-        AppendConsole($"CAD: Offset de +0.5m aplicado em {selected.Count} entidade(s).");
-    }
+    private void MoveSelectedEntities() => ActiveTool = CadToolType.Move;
+    private void CopySelectedEntities() => ActiveTool = CadToolType.Copy;
+    private void RotateSelectedEntities() => ActiveTool = CadToolType.Rotate;
+    private void MirrorSelectedEntities() => ActiveTool = CadToolType.Mirror;
+    private void OffsetSelectedEntities() => ActiveTool = CadToolType.Offset;
 
     private void LoadSampleDrawing()
     {
@@ -603,12 +550,20 @@ public sealed class MainViewModel : ObservableObject
         ReplaceDocument(doc, null, false);
     }
 
-    private void SaveDrawingFromToolbar()
+    private void SaveDrawingFromToolbar() => SaveDrawingInteractively();
+
+    public bool SaveDrawingInteractively()
     {
         if (_nativePath != null)
         {
-            ShowCommandError(RunCadCommand("SAVE"));
-            return;
+            var saved = RunCadCommand("SAVE");
+            if (!saved.Success) AppendConsole(saved.Message);
+            return saved.Success;
+        }
+        if (SavePathPrompt != null)
+        {
+            var path = SavePathPrompt();
+            return path != null && RunCadCommand("SAVE " + path).Success;
         }
 
         var dialog = new SaveFileDialog
@@ -619,8 +574,10 @@ public sealed class MainViewModel : ObservableObject
             FileName = Path.GetExtension(Document.Title).Equals(".cad", StringComparison.OrdinalIgnoreCase)
                 ? Document.Title : "Drawing.cad"
         };
-        if (dialog.ShowDialog() == true)
-            ShowCommandError(RunCadCommand($"SAVE \"{dialog.FileName}\""));
+        if (dialog.ShowDialog() != true) return false;
+        var result = RunCadCommand("SAVE " + dialog.FileName);
+        ShowCommandError(result);
+        return result.Success;
     }
 
     private void OpenDrawingFromToolbar()
@@ -632,20 +589,16 @@ public sealed class MainViewModel : ObservableObject
             CheckFileExists = true
         };
         if (dialog.ShowDialog() != true) return;
-        if (!ConfirmDiscardUnsaved()) return;
-        var discard = _hasUnsavedChanges ? "DISCARD " : string.Empty;
-        ShowCommandError(RunCadCommand($"OPEN {discard}\"{dialog.FileName}\""));
+        ShowCommandError(ReplaceFromFile(dialog.FileName));
     }
 
     private void NewDrawingFromToolbar()
     {
         if (!ConfirmDiscardUnsaved()) return;
-        ShowCommandError(RunCadCommand(_hasUnsavedChanges ? "NEW DISCARD" : "NEW"));
+        ShowCommandError(RunCadCommand(HasUnsavedChanges ? "NEW DISCARD" : "NEW"));
     }
 
-    private bool ConfirmDiscardUnsaved() => !_hasUnsavedChanges ||
-        MessageBox.Show("O desenho atual tem alterações não salvas. Deseja descartá-las?",
-            "Alterações não salvas", MessageBoxButton.YesNo, MessageBoxImage.Warning) == MessageBoxResult.Yes;
+    private bool ConfirmDiscardUnsaved() => ConfirmPendingChanges();
 
     private static void ShowCommandError(CadCommandResult result)
     {
@@ -695,15 +648,13 @@ public sealed class MainViewModel : ObservableObject
             DefaultExt = "dxf"
         };
 
-        if (dialog.ShowDialog() == true)
-        {
-            var content = File.ReadAllText(dialog.FileName);
-            var imported = DxfCadImporter.ImportFromDxf(content, Path.GetFileName(dialog.FileName));
-            Document = imported;
-            UndoManager.Clear();
-            _nativePath = null;
-            _hasUnsavedChanges = true;
-            MessageBox.Show($"Successfully loaded {imported.Entities.Count} entities from DXF.", "DXF Import", MessageBoxButton.OK, MessageBoxImage.Information);
-        }
+        if (dialog.ShowDialog() != true) return;
+        ShowCommandError(ReplaceFromFile(dialog.FileName));
+    }
+
+    public CadCommandResult ReplaceFromFile(string path)
+    {
+        // Stage and validate first; failed reads never prompt to discard the current drawing.
+        return OpenDrawing(path, protectPending: true);
     }
 }

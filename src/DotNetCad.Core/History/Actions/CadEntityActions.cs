@@ -124,6 +124,8 @@ public sealed class OffsetEntityAction : IUndoableAction
         _document = document ?? throw new ArgumentNullException(nameof(document));
         ArgumentNullException.ThrowIfNull(originalEntity);
 
+        if (!double.IsFinite(distance) || Math.Abs(distance) < 0.01) throw new ArgumentException("Offset requer distância finita de pelo menos 0,01.");
+
         if (originalEntity is CadLine line)
         {
             var (start, end) = CadConstructionMath.OffsetSegment(line.StartPoint, line.EndPoint, distance, toLeft: true);
@@ -131,7 +133,9 @@ public sealed class OffsetEntityAction : IUndoableAction
         }
         else if (originalEntity is CadCircle circle)
         {
-            _newEntity = new CadCircle(circle.Center, Math.Max(0.05, circle.Radius + distance), circle.Layer, circle.ColorHex);
+            var validation = GeometryValidator.ValidateCircle(circle.Center, circle.Radius + distance);
+            if (!validation.IsValid) throw new ArgumentException(validation.ErrorMessage);
+            _newEntity = new CadCircle(circle.Center, circle.Radius + distance, circle.Layer, circle.ColorHex);
         }
         else if (originalEntity is CadRectangle rect)
         {
@@ -141,14 +145,18 @@ public sealed class OffsetEntityAction : IUndoableAction
         }
         else if (originalEntity is CadPolyline poly)
         {
+            if (!poly.IsClosed) throw new ArgumentException("Offset de polilinha aberta não é suportado; use segmentos individuais.");
             var offsetVertices = CadConstructionMath.OffsetPolygon(poly.Vertices, distance);
             _newEntity = new CadPolyline(offsetVertices, isClosed: poly.IsClosed, layer: poly.Layer, colorHex: poly.ColorHex);
         }
         else
         {
-            _newEntity = originalEntity.Clone();
-            _newEntity.Translate(distance, distance);
+            throw new ArgumentException("Offset suporta linhas, círculos, retângulos e polilinhas fechadas convexas.");
         }
+        _newEntity.LineThickness = originalEntity.LineThickness;
+        var bounds = _newEntity.BoundingBox;
+        if (bounds.IsEmpty || !double.IsFinite(bounds.MinX) || !double.IsFinite(bounds.MinY) ||
+            !double.IsFinite(bounds.MaxX) || !double.IsFinite(bounds.MaxY)) throw new ArgumentException("Offset produz geometria inválida.");
     }
 
     public string Description => $"Offset {_newEntity.EntityType}";
