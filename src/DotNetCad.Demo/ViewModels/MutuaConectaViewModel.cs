@@ -20,7 +20,7 @@ public sealed class MutuaConectaViewModel : ObservableObject
     private readonly MutuaCredentialStore _credentialStore;
 
     private bool _isPanelVisible = true;
-    private string _apiUrl = MutuaEndpointValidator.DefaultLocalDevelopmentUrl;
+    private string _apiUrl = MutuaEndpointValidator.DefaultProductionUrl;
     private string _demoEmail = "carlos.mendes@demo.mutuaconecta.local";
     private string _demoPassword = "Demo@Mutua2026!";
     private string _connectionStatusText = "Modo Offline (API desconectada)";
@@ -200,7 +200,7 @@ public sealed class MutuaConectaViewModel : ObservableObject
     {
         _mainViewModel = mainViewModel;
         _credentialStore = credentialStore ?? new MutuaCredentialStore();
-        _apiClient = apiClient ?? new MutuaConectaApiClient(baseUrl: MutuaEndpointValidator.DefaultLocalDevelopmentUrl);
+        _apiClient = apiClient ?? new MutuaConectaApiClient(baseUrl: MutuaEndpointValidator.DefaultProductionUrl);
 
         // Load config from credential store if available
         var config = _credentialStore.LoadConfig();
