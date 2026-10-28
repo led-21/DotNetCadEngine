@@ -120,6 +120,32 @@ public class CadApplicationCommandTests
                 viewModel.DeleteSelectedCommand.Execute(null);
                 Assert.DoesNotContain(entity, viewModel.Document.Entities);
                 Assert.Equal(0, viewModel.SelectedCount);
+
+                // Test Modify Commands: Move, Copy, Rotate, Mirror, Offset
+                Assert.True(viewModel.RunCadCommand("LINE 0;0 4;0").Success);
+                var testLine = Assert.IsType<CadLine>(viewModel.Document.Entities.Last());
+                testLine.IsSelected = true;
+
+                // Move (+1.0m on X)
+                viewModel.MoveSelectedCommand.Execute(null);
+                Assert.Equal(1.0, testLine.StartPoint.X);
+                Assert.Equal(5.0, testLine.EndPoint.X);
+
+                // Copy (+1.0m on X, +1.0m on Y)
+                var countBeforeCopy = viewModel.Document.Entities.Count;
+                viewModel.CopySelectedCommand.Execute(null);
+                Assert.Equal(countBeforeCopy + 1, viewModel.Document.Entities.Count);
+
+                // Rotate (90 degrees around center)
+                viewModel.RotateSelectedCommand.Execute(null);
+
+                // Mirror (vertical axis)
+                viewModel.MirrorSelectedCommand.Execute(null);
+
+                // Offset (parallel)
+                var countBeforeOffset = viewModel.Document.Entities.Count;
+                viewModel.OffsetSelectedCommand.Execute(null);
+                Assert.Equal(countBeforeOffset + 1, viewModel.Document.Entities.Count);
             }
             catch (Exception ex) { error = ex; }
         });
