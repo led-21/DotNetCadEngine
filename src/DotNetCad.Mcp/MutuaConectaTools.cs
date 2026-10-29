@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using System.Text.Json;
 using ModelContextProtocol.Server;
+using DotNetCad.Infrastructure.Mcp;
 
 namespace DotNetCad.Mcp;
 
@@ -20,18 +21,14 @@ public sealed class MutuaConectaTools(CadMcpBridgeClient bridge)
     public async Task<string> MutuaGetLinkedProject()
     {
         var response = await bridge.SendAsync("mutua_get_linked_project");
-        return response.Success
-            ? response.Content ?? response.Message
-            : $"ERROR: {response.Message}";
+        return RequireSuccess(response);
     }
 
     [McpServerTool, Description("READ-ONLY: Analyzes the layers and technical entities of the active CAD drawing in DotNetCad.Demo, cross-referencing with linked project disciplines to detect missing engineering specializations.")]
     public async Task<string> MutuaInspectCadDisciplines()
     {
         var response = await bridge.SendAsync("mutua_inspect_cad_disciplines");
-        return response.Success
-            ? response.Content ?? response.Message
-            : $"ERROR: {response.Message}";
+        return RequireSuccess(response);
     }
 
     [McpServerTool, Description("READ-ONLY: Queries the deterministic matching engine on Mútua Conecta for recommended specialists for the active project requirement (e.g. electrical substation and SPDA).")]
@@ -39,9 +36,7 @@ public sealed class MutuaConectaTools(CadMcpBridgeClient bridge)
         [Description("Optional project requirement GUID string")] string? requirementId = null)
     {
         var response = await bridge.SendAsync("mutua_find_specialists", requirementId);
-        return response.Success
-            ? response.Content ?? response.Message
-            : $"ERROR: {response.Message}";
+        return RequireSuccess(response);
     }
 
     [McpServerTool, Description("STAGE/DRAFT (Safe): Prepares a collaboration invitation draft in the DotNetCad.Demo desktop UI for explicit human review and confirmation. NEVER sends invitations without explicit human click in the UI.")]
@@ -59,8 +54,13 @@ public sealed class MutuaConectaTools(CadMcpBridgeClient bridge)
             recipientProfileId
         });
         var response = await bridge.SendAsync("mutua_prepare_collaboration_draft", payload);
-        return response.Success
-            ? response.Message + (response.Content != null ? "\n" + response.Content : string.Empty)
-            : $"ERROR: {response.Message}";
+        if(!response.Success)throw new InvalidOperationException($"[{response.Code}] {response.Message}");
+        return response.Message+(response.Content!=null?"\n"+response.Content:string.Empty);
     }
+    private static string RequireSuccess(CadMcpResponse response)
+    {
+        if(!response.Success)throw new InvalidOperationException($"[{response.Code}] {response.Message}");
+        return response.Content??response.Message;
+    }
+
 }

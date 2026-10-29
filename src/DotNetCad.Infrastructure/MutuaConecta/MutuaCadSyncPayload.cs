@@ -30,5 +30,5 @@ public static class MutuaCadSyncPayload
 }
 public static class CadIntegrationCapabilities
 {
-    public static IReadOnlyList<string> Supported {get;}=Array.AsReadOnly(new[]{"drawing_read","geometry_edit","layers_lifecycle","batch_atomic","proposals_stage_commit_discard","entity_queries","spatial_conflicts","topology_analysis","ai_audit","svg_dxf_export","mutua_project_read","mutua_sync_explicit"});
+    public static IReadOnlyList<string> Supported {get;}=Array.AsReadOnly(new[]{"drawing_read","geometry_edit","layers_lifecycle","batch_atomic","proposals_stage_commit_discard","entity_queries","spatial_conflicts","topology_analysis","ai_audit","svg_dxf_export","mutua_project_read","mutua_sync_explicit","engineering_skills"});
 }

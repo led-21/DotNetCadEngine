@@ -30,3 +30,31 @@ ehthumbs.db
 Desktop.ini
 $RECYCLE.BIN/
 .DS_Store
+
+# Isolated local validation builds and previews
+.artifacts/
+
+# Local environment configuration (keep templates versioned)
+.env
+.env.*
+!.env.example
+!.env.*.example
+
+# Python tooling used by MCP smoke tests
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+
+# Local editor caches and transient diagnostics
+.idea/
+.cache/
+*.tmp
+*.bak
+*.log
+*.binlog
+*.dmp
+*.tsbuildinfo
+
+# Generated installer output; installer/assets remains source-controlled
+installer/output/

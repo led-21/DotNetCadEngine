@@ -400,11 +400,15 @@ public sealed class MutuaConectaViewModel : ObservableObject
         }
     }
 
+    private MutuaDocumentSyncResult RejectSync(string error)
+    {
+        StatusMessage=error;_mainViewModel.AppendConsole("MUTUA ERROR: "+error);return new(false,ErrorMessage:error);
+    }
     public async Task<MutuaDocumentSyncResult> SyncCadDocumentAsync()
     {
-        if(IsBusy)return new(false,ErrorMessage:"Outra operação Mútua está em andamento.");
-        if(!IsAuthenticated)return new(false,ErrorMessage:"Autentique-se no painel Mútua antes de publicar o documento.");
-        if(_mainViewModel.InteractiveOperationActive?.Invoke()==true)return new(false,ErrorMessage:"Conclua ou cancele o comando interativo antes de sincronizar.");
+        if(IsBusy)return RejectSync("Outra operação Mútua está em andamento.");
+        if(!IsAuthenticated)return RejectSync("Autentique-se no painel Mútua antes de publicar o documento.");
+        if(_mainViewModel.InteractiveOperationActive?.Invoke()==true)return RejectSync("Conclua ou cancele o comando interativo antes de sincronizar.");
         IsBusy = true;
         StatusMessage = "Sincronizando planta CAD e preview SVG com a plataforma web...";
         try

@@ -10,4 +10,9 @@
     <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.12" />
     <ProjectReference Include="..\DotNetCad.Infrastructure\DotNetCad.Infrastructure.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <Content Include="..\..\.agents\skills\**\SKILL.md"
+             Link="EngineeringSkills\%(RecursiveDir)%(Filename)%(Extension)"
+             CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
 </Project>
