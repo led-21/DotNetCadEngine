@@ -249,6 +249,7 @@ public sealed class MutuaConectaViewModel : ObservableObject
         foreach (var document in details.Documents.Where(d => d.FileName.EndsWith(".cad", StringComparison.OrdinalIgnoreCase)).OrderByDescending(d => d.UploadedAtUtc).ThenByDescending(d => d.VersionNumber)) Revisions.Add(document);
         SelectedRevision = Revisions.FirstOrDefault();
         _revisionVersions.Clear();
+        if (details.DocumentVersionHeads != null) foreach (var head in details.DocumentVersionHeads) _revisionVersions[head.Key] = head.Value;
         foreach (var document in details.Documents) _revisionVersions[document.FileName] = Math.Max(_revisionVersions.GetValueOrDefault(document.FileName), document.VersionNumber);
         Requirements.Clear();
         foreach (var requirement in details.Requirements) Requirements.Add(requirement);

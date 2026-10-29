@@ -113,7 +113,8 @@ public sealed record MutuaProjectDetailDto(
     IReadOnlyList<MutuaProjectDisciplineDto> Disciplines,
     IReadOnlyList<MutuaProjectRequirementDto> Requirements,
     IReadOnlyList<MutuaProjectMemberDto> Members,
-    IReadOnlyList<MutuaDocumentSummaryDto> Documents
+    IReadOnlyList<MutuaDocumentSummaryDto> Documents,
+    IReadOnlyDictionary<string, int>? DocumentVersionHeads = null
 );
 
 public sealed record MutuaProfessionalMatchDto(
