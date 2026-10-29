@@ -1,4 +1,4 @@
-using System.Windows;
+﻿using System.Windows;
 using DotNetCad.Demo.Mcp;
 using DotNetCad.Demo.ViewModels;
 
@@ -102,16 +102,18 @@ public partial class MainWindow : Window
         }
     }
 
-    private void ShowAbout_Click(object sender, RoutedEventArgs e)
-    {
-        MessageBox.Show(
-            "DotNetCadEngine — Editor CAD 2D de Alta Precisão\n\n" +
-            "Versão: 1.0.0 (Windows x64)\n" +
-            "Plataforma: .NET 10.0 WPF (Windows Desktop)\n" +
-            "Motor: Geometria Vetorial 2D Pura sem dependências pesadas\n" +
-            "Formatos: .cad (Nativo), DXF (AutoCAD), SVG (Vetor Web)\n" +
-            "Recursos: Entrada Numérica, Snaps, Cotas, Camadas e Servidor MCP Integrado.",
-            "Sobre o DotNetCadEngine",
+    private void ShowAbout_Click(object sender, RoutedEventArgs e)
+    {
+        MessageBox.Show(
+            "DotNetCadEngine — Edição Mútua Conecta\n\n" +
+            "Versão: 1.0.0 (Windows x64)\n" +
+            "Plataforma: .NET 10.0 WPF (Windows Desktop)\n" +
+            "Ecossistema: Mútua Conecta • Plataforma Multidisciplinar de Engenharia\n" +
+            "Formatos: .cad (Nativo), DXF (AutoCAD), SVG (Vetor Web)\n" +
+            "Recursos: Entrada Numérica, Snaps, Cotas, Camadas e Servidor MCP Integrado.\n\n" +
+            "© 2026 Mútua Conecta. Todos os direitos reservados.\n" +
+            "Desenvolvido para o ecossistema profissional das engenharias, agronomia e geociências.",
+            "Sobre o DotNetCadEngine — Mútua Conecta",
             MessageBoxButton.OK,
             MessageBoxImage.Information);
     }

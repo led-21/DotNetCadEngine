@@ -45,7 +45,7 @@ SetupIconFile=..\src\DotNetCad.Demo\Assets\dotnetcad.ico
 UninstallDisplayIcon={app}\{#MyAppExeName}
 
 ; Licença
-LicenseFile=..\LICENSE
+LicenseFile=LICENSE-PRO.txt
 
 ; Saída do instalador
 OutputDir=..\artifacts\installer

@@ -1,11 +1,10 @@
 <Project>
   <PropertyGroup>
     <Product>DotNetCadEngine</Product>
-    <Description>CAD 2D técnico com motor geométrico, interoperabilidade DXF/SVG e suporte MCP local</Description>
-    <Company>DotNetCadEngine Contributors</Company>
-    <Authors>DotNetCadEngine Contributors</Authors>
-    <Copyright>Copyright © 2026 DotNetCadEngine Contributors</Copyright>
-    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <Description>CAD 2D técnico com motor geométrico, interoperabilidade DXF/SVG e suporte MCP local — Edição Mútua Conecta</Description>
+    <Company>Mútua Conecta</Company>
+    <Authors>Mútua Conecta</Authors>
+    <Copyright>Copyright © 2026 Mútua Conecta. Todos os direitos reservados.</Copyright>
     <Version>1.0.0</Version>
     <AssemblyVersion>1.0.0.0</AssemblyVersion>
     <FileVersion>1.0.0.0</FileVersion>

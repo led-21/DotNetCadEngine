@@ -1,4 +1,4 @@
-# DotNetCadEngine
+﻿# DotNetCadEngine
 
 [![CI](https://github.com/led-21/DotNetCadEngine/actions/workflows/ci.yml/badge.svg)](https://github.com/led-21/DotNetCadEngine/actions/workflows/ci.yml)
 
@@ -177,10 +177,13 @@ Interactive graphical tools with real-time preview and dedicated toolbar control
 
 ## CI
 
-O projeto é validado sob demanda via GitHub Actions (`workflow_dispatch`):
-- O build completo e os testes da solução (incluindo a interface WPF) são validados no Windows (`windows-latest`).
-- O `DotNetCad.Core` e o `DotNetCad.Infrastructure` são validados de forma desacoplada no Linux (`ubuntu-latest`).
+O projeto Ã© validado sob demanda via GitHub Actions (`workflow_dispatch`):
+- O build completo e os testes da soluÃ§Ã£o (incluindo a interface WPF) sÃ£o validados no Windows (`windows-latest`).
+- O `DotNetCad.Core` e o `DotNetCad.Infrastructure` sÃ£o validados de forma desacoplada no Linux (`ubuntu-latest`).
 
 ## License
 
-Licensed under the [MIT License](LICENSE).
+DotNetCadEngine é distribuído sob a **[Licença Profissional de Avaliação Mútua Conecta (Source-Available)](LICENSE)**.
+
+- **Código Aberto para Demonstração e Auditoria:** O código é público para permitir avaliação de arquitetura, conferência técnica por bancas examinadoras (Hackathon Mútua Inova+), inspeção acadêmica e integração oficial com o ecossistema Mútua Conecta.
+- **Propriedade Intelectual & Restrição Comercial:** Direitos de desenvolvimento corporativo, exploração comercial e distribuição proprietária são reservados à **Mútua Conecta**. Proibida a redistribuição ou reutilização comercial sem autorização prévia por escrito.

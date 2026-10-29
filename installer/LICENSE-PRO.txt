@@ -1,0 +1,30 @@
+CONTRATO DE LICENÇA DE USUÁRIO FINAL (EULA)
+DOTNETCADENGINE — EDIÇÃO MÚTUA CONECTA
+LICENÇA DE USO PROFISSIONAL
+
+Copyright (c) 2026 Mútua Conecta. Todos os direitos reservados.
+Tecnologia desenvolvida para o ecossistema profissional do Sistema CONFEA/CREA e Mútua.
+
+1. CONCESSÃO DE LICENÇA
+A Mútua Conecta concede ao usuário uma licença não exclusiva, intransferível e revogável para instalar e utilizar o software DotNetCadEngine em estações de trabalho compatíveis, para fins profissionais, de projeto, desenho técnico e interoperabilidade multidisciplinar.
+
+2. PROPRIEDADE INTELECTUAL
+O software, sua arquitetura, códigos executáveis, marcas, identidade visual, interfaces gráficas, servidor MCP integrado e documentação técnica associada são de propriedade intelectual exclusiva e protegida por leis de direitos autorais e tratados internacionais.
+
+3. USO AUTORIZADO E INTEGRAÇÕES
+É autorizado o uso do software para:
+a) Elaboração, edição e exportação de desenhos técnicos 2D (formatos CAD, DXF, SVG);
+b) Integração com o ecossistema Mútua Conecta para formação de equipes multidisciplinares;
+c) Conexão com clientes e assistentes de Inteligência Artificial controlados pelo usuário via protocolo Model Context Protocol (MCP).
+
+4. RESTRIÇÕES
+O usuário não poderá, sem autorização prévia por escrito:
+a) Modificar, descompilar, realizar engenharia reversa ou criar obras derivadas com fins de apropriação indevida de marca;
+b) Remover avisos de direitos autorais, marcas registradas ou identificadores de versão;
+c) Utilizar o software para atividades que violem normas técnicas, resoluções do CONFEA ou legislações vigentes.
+
+5. ISENÇÃO DE GARANTIAS E LIMITAÇÃO DE RESPONSABILIDADE
+O software é fornecido "no estado em que se encontra" (as is), sem garantias expressas ou implícitas de adequação a um propósito específico que dispense a responsabilidade técnica e assinatura (ART) de profissional legalmente habilitado. A responsabilidade técnica pelos cálculos, especificações e projetos desenvolvidos com auxílio desta ferramenta cabe integralmente ao profissional habilitado autor do projeto.
+
+6. FORO E LEGISLAÇÃO APLICÁVEL
+Este instrumento é regido pelas leis da República Federativa do Brasil.

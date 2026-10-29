@@ -1,21 +1,40 @@
-MIT License
+Mútua Conecta Source-Available & Professional Evaluation License (v1.0)
+Copyright (c) 2026 Mútua Conecta / InovaMútua. Todos os direitos reservados.
 
-Copyright (c) 2026 DotNetCadEngine Contributors
+================================================================================
+PORTUGUÊS (VERSÃO OFICIAL)
+================================================================================
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+1. CONCESSÃO DE AVALIAÇÃO, AUDITORIA E DEMONSTRAÇÃO TÉCNICA
+Este código-fonte é disponibilizado publicamente sob o modelo Source-Available exclusivamente para fins de auditoria técnica, avaliação acadêmica, demonstração no Hackathon Mútua Inova+ e integração oficial ao ecossistema Mútua Conecta. É permitida a visualização, clonagem para estudo pessoal, compilação local e execução em ambiente de desenvolvimento e testes.
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+2. RESTRIÇÕES DE EXPLORAÇÃO COMERCIAL E REDISTRIBUIÇÃO
+São expressamente vedados sem prévia autorização formal por escrito da Mútua Conecta:
+a) A utilização deste software ou de seus componentes (Core geométrico, Infrastructure DXF/SVG, Servidor MCP e Interface Gráfica WPF) para fins comerciais diretos ou indiretos;
+b) A redistribuição, revenda, sublicenciamento, cópia ou empacotamento sob outra denominação comercial ou produto derivado fechado;
+c) A oferta desta tecnologia, seus algoritmos ou seus serviços integrados como serviço em nuvem concorrente (SaaS/PaaS) ou produto autônomo concorrente.
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+3. PROPRIEDADE INTELECTUAL E DESENVOLVIMENTO FUTURO
+A engine DotNetCadEngine, sua arquitetura vetorial em .NET, seus algoritmos de precisão geométrica e protocolos de automação via Model Context Protocol (MCP) constituem ativo de Propriedade Intelectual protegido da Mútua Conecta. Releases comerciais, módulos corporativos avançados e desenvolvimentos futuros permanecem sob titularidade exclusiva e custódia proprietária do ecossistema Mútua Conecta.
+
+4. ISENÇÃO DE RESPONSABILIDADE
+O SOFTWARE É FORNECIDO "NO ESTADO EM QUE SE ENCONTRA" (AS IS), SEM GARANTIAS DE QUALQUER NATUREZA, EXPRESSAS OU IMPLÍCITAS. EM NENHUM CASO OS DETENTORES DE DIREITOS AUTORAIS SERÃO RESPONSÁVEIS POR QUAISQUER DANOS OU RECLAMAÇÕES DECORRENTES DO USO DESTE SOFTWARE.
+
+================================================================================
+ENGLISH (REFERENCE TRANSLATION)
+================================================================================
+
+1. SOURCE-AVAILABLE EVALUATION & TECHNICAL DEMONSTRATION GRANT
+This source code is made publicly available under a Source-Available model solely for technical audit, academic evaluation, demonstration at the Mútua Inova+ Hackathon, and official integration with the Mútua Conecta ecosystem. Viewing, cloning for educational inspection, local compilation, and non-commercial development testing are permitted.
+
+2. COMMERCIAL RESTRICTIONS
+The following actions are strictly prohibited without prior written authorization from Mútua Conecta:
+a) Using this software or any of its components (Geometry Core, Infrastructure DXF/SVG, MCP Server, or WPF UI) for direct or indirect commercial gain;
+b) Sublicensing, reselling, redistributing, or rebranding under another commercial software product;
+c) Hosting or offering this engine, its algorithms, or integrated services as a competing cloud (SaaS/PaaS) or desktop product.
+
+3. INTELLECTUAL PROPERTY & FUTURE DEVELOPMENT
+DotNetCadEngine, its pure .NET vector geometry architecture, and MCP AI automation protocols are protected Intellectual Property of Mútua Conecta. Future enterprise developments, advanced modules, and commercial releases remain proprietary to Mútua Conecta.
+
+4. NO WARRANTY
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED. IN NO EVENT SHALL THE COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY ARISING FROM THE USE OF THE SOFTWARE.
