@@ -76,6 +76,12 @@ if ($LASTEXITCODE -ne 0) {
 # Copiar licenca para a pasta de publicacao
 Copy-Item "$RepoRoot\LICENSE" -Destination "$PublishDir\LICENSE" -Force
 
+Write-Host "`nPublicando DotNetCad.Mcp (Servidor MCP de IA)..." -ForegroundColor Yellow
+$McpPublishDir = "$PublishDir\mcp"
+New-Item -ItemType Directory -Path $McpPublishDir -Force | Out-Null
+& dotnet publish "$RepoRoot\src\DotNetCad.Mcp\DotNetCad.Mcp.csproj" -c $Configuration -r $Runtime --self-contained true -p:PublishSingleFile=false -o $McpPublishDir
+if ($LASTEXITCODE -ne 0) { Write-Error "Falha ao publicar DotNetCad.Mcp." }
+
 $mainExe = "$PublishDir\DotNetCad.Demo.exe"
 if (-not (Test-Path $mainExe)) {
     Write-Error "O executavel principal nao foi gerado em '$mainExe'."
