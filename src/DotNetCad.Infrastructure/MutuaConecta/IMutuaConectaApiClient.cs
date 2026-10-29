@@ -191,6 +191,8 @@ public interface IMutuaConectaApiClient
         Guid projectId, Guid requirementId, CancellationToken ct = default);
     Task<MutuaInvitationDto?> SendCollaborationInvitationAsync(
         Guid projectId, MutuaCreateInvitationRequest request, CancellationToken ct = default);
+    Task<byte[]> DownloadNativeDocumentAsync(Guid projectId, MutuaDocumentSummaryDto revision, CancellationToken ct = default)
+        => throw new NotSupportedException("Download nativo não suportado por este cliente.");
     Task<MutuaDocumentSyncResult> SyncCadDocumentMetadataAsync(
         Guid projectId, MutuaCadDocumentSyncRequest request, CancellationToken ct = default);
 }

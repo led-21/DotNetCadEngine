@@ -248,6 +248,21 @@ public sealed class MutuaConectaApiClient : IMutuaConectaApiClient, IDisposable
         }
     }
 
+    public async Task<byte[]> DownloadNativeDocumentAsync(Guid projectId, MutuaDocumentSummaryDto revision, CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(SessionToken)) throw new InvalidOperationException("Autentique-se antes de baixar uma revisão.");
+        if (revision.FileSizeBytes <= 0 || revision.FileSizeBytes > 10 * 1024 * 1024) throw new InvalidDataException("Tamanho da revisão inválido.");
+        using var request = CreateRequest(HttpMethod.Get, $"api/v1/projects/{projectId}/documents/{revision.Id}/native");
+        using var response = await SendAsyncSafe(request, ct).ConfigureAwait(false);
+        if (response == null) throw new IOException("API indisponível. O desenho local foi preservado.");
+        if (response.StatusCode == System.Net.HttpStatusCode.NotFound) throw new IOException("Esta revisão não possui arquivo .cad nativo no servidor.");
+        response.EnsureSuccessStatusCode();
+        var bytes = await response.Content.ReadAsByteArrayAsync(ct).ConfigureAwait(false);
+        if (bytes.LongLength != revision.FileSizeBytes || !Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(bytes)).Equals(revision.Sha256Hash, StringComparison.OrdinalIgnoreCase))
+            throw new InvalidDataException("Falha de integridade: tamanho ou SHA-256 diferente da revisão selecionada.");
+        return bytes;
+    }
+
     public async Task<MutuaDocumentSyncResult> SyncCadDocumentMetadataAsync(
         Guid projectId, MutuaCadDocumentSyncRequest request, CancellationToken ct = default)
     {

@@ -13,6 +13,24 @@ namespace DotNetCad.Demo;
 public partial class MainWindow : Window
 
 {
+    private void CopyMutuaDemoCredential_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not System.Windows.Controls.Button { Tag: string value } button) return;
+        try
+        {
+            Clipboard.SetText(value);
+            if (DataContext is MainViewModel vm)
+                vm.Mutua.StatusMessage = button.Content?.ToString() == "Copiar senha"
+                    ? "Senha demonstrativa copiada."
+                    : "E-mail demonstrativo copiado.";
+        }
+        catch (System.Runtime.InteropServices.ExternalException)
+        {
+            if (DataContext is MainViewModel vm)
+                vm.Mutua.StatusMessage = "Área de transferência ocupada. Tente copiar novamente.";
+        }
+    }
+
     private void MutuaPasswordChanged(object sender, System.Windows.RoutedEventArgs e)
     {
         if (DataContext is DotNetCad.Demo.ViewModels.MainViewModel vm && sender is System.Windows.Controls.PasswordBox input) vm.Mutua.DemoPassword = input.Password;

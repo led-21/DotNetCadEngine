@@ -383,6 +383,19 @@
                                                                 ToolTip="Consultar probe de saúde da API" Margin="2,0,0,0" Padding="4,2" FontSize="10" />
                                                     </UniformGrid>
                                                     <TextBlock Text="{Binding Mutua.AuthenticatedUserTitle}" Foreground="#64748B" FontSize="9" TextTrimming="CharacterEllipsis" />
+                                                    <Border Background="#172033" BorderBrush="#334155" BorderThickness="1" CornerRadius="3" Padding="6" Margin="0,6,0,0">
+                                                        <StackPanel>
+                                                            <TextBlock Text="ACESSO DEMONSTRATIVO — CARLOS" Foreground="#38BDF8" FontSize="9" FontWeight="Bold" Margin="0,0,0,4" />
+                                                            <TextBlock Text="carlos.mendes@demo.mutuaconecta.local" Foreground="#CBD5E1" FontFamily="Consolas" FontSize="10" TextWrapping="Wrap" />
+                                                            <TextBlock Text="Senha: Demo@Mutua2026!" Foreground="#CBD5E1" FontFamily="Consolas" FontSize="10" Margin="0,3,0,4" />
+                                                            <UniformGrid Columns="2">
+                                                                <Button Style="{StaticResource CadButtonStyle}" Content="Copiar e-mail" Tag="carlos.mendes@demo.mutuaconecta.local"
+                                                                        Click="CopyMutuaDemoCredential_Click" Padding="4,2" FontSize="9" Margin="0,0,2,0" />
+                                                                <Button Style="{StaticResource CadButtonStyle}" Content="Copiar senha" Tag="Demo@Mutua2026!"
+                                                                        Click="CopyMutuaDemoCredential_Click" Padding="4,2" FontSize="9" Margin="2,0,0,0" />
+                                                            </UniformGrid>
+                                                        </StackPanel>
+                                                    </Border>
                                                 </StackPanel>
                                             </Border>
 
@@ -397,6 +410,11 @@
                                                     <TextBlock Text="PROJETO VINCULADO" Foreground="#38BDF8" FontSize="9" FontWeight="Bold" Margin="0,0,0,2" />
                                                     <TextBlock Text="{Binding Mutua.LinkedProjectCode}" Foreground="#F8FAFC" FontSize="11" FontWeight="Bold" />
                                                     <TextBlock Text="{Binding Mutua.LinkedProjectTitle}" Foreground="#CBD5E1" FontSize="10" TextWrapping="Wrap" Margin="0,2,0,4" />
+                                                    <TextBlock Text="Revisões CAD no servidor" Foreground="#94A3B8" FontSize="10" Margin="0,4,0,2" />
+                                                    <ComboBox ItemsSource="{Binding Mutua.Revisions}" SelectedItem="{Binding Mutua.SelectedRevision}" FontSize="10" Margin="0,0,0,4">
+                                                        <ComboBox.ItemTemplate><DataTemplate><TextBlock TextWrapping="Wrap"><Run Text="{Binding FileName}" /><Run Text=" · v" /><Run Text="{Binding VersionNumber}" /></TextBlock></DataTemplate></ComboBox.ItemTemplate>
+                                                    </ComboBox>
+                                                    <Button Style="{StaticResource CadButtonStyle}" Content="Baixar e abrir no CAD" Command="{Binding Mutua.DownloadAndOpenRevisionCommand}" Padding="4,3" FontSize="10" Margin="0,0,0,6" ToolTip="Baixar a revisão selecionada, verificar SHA-256 e abrir após confirmar alterações locais" />
                                                     <Button Style="{StaticResource CadButtonStyle}" Content="Planta Demo Silos (.cad)"
                                                             Command="{Binding Mutua.LoadDemoSilosDrawingCommand}"
                                                             Margin="0,0,0,4" Padding="4,3" FontSize="10" Background="#1E3A5F" />

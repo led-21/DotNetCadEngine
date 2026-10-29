@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.IO;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
@@ -10,6 +11,7 @@ using DotNetCad.Core.Geometry;
 using DotNetCad.Demo.Mvvm;
 using DotNetCad.Infrastructure.MutuaConecta;
 using DotNetCad.Infrastructure.Svg;
+using DotNetCad.Infrastructure.Native;
 
 namespace DotNetCad.Demo.ViewModels;
 
@@ -190,7 +192,7 @@ public sealed class MutuaConectaViewModel : ObservableObject
     public MutuaProjectSummaryDto? SelectedProject
     {
         get => _selectedProject;
-        set { if (SetProperty(ref _selectedProject, value)) { LinkedProjectId = Guid.Empty; LinkedProjectCode = string.Empty; LinkedProjectTitle = "Selecione um projeto"; Requirements.Clear(); SelectedRequirement = null; RecommendedSpecialists.Clear(); IsDraftPendingConfirmation = false; } }
+        set { if (SetProperty(ref _selectedProject, value)) { LinkedProjectId = Guid.Empty; LinkedProjectCode = string.Empty; LinkedProjectTitle = "Selecione um projeto"; Requirements.Clear(); Revisions.Clear(); SelectedRevision = null; SelectedRequirement = null; RecommendedSpecialists.Clear(); IsDraftPendingConfirmation = false; } }
     }
     private MutuaProjectRequirementDto? _selectedRequirement;
     public MutuaProjectRequirementDto? SelectedRequirement
@@ -198,6 +200,41 @@ public sealed class MutuaConectaViewModel : ObservableObject
         get => _selectedRequirement;
         set { if (SetProperty(ref _selectedRequirement, value)) { ElectricalRequirementId = value?.Id ?? Guid.Empty; RecommendedSpecialists.Clear(); IsDraftPendingConfirmation = false; } }
     }
+    public ObservableCollection<MutuaDocumentSummaryDto> Revisions { get; } = [];
+    private MutuaDocumentSummaryDto? _selectedRevision;
+    public MutuaDocumentSummaryDto? SelectedRevision { get => _selectedRevision; set => SetProperty(ref _selectedRevision, value); }
+    public ICommand DownloadAndOpenRevisionCommand { get; }
+    public async Task<bool> DownloadAndOpenRevisionAsync()
+    {
+        if (IsBusy || !IsAuthenticated || LinkedProjectId == Guid.Empty || SelectedRevision == null) { StatusMessage = "Autentique-se, carregue um projeto e selecione uma revisão."; return false; }
+        if (_mainViewModel.InteractiveOperationActive?.Invoke() == true) { StatusMessage = "Conclua ou cancele o comando interativo antes de abrir a revisão."; return false; }
+        var projectId = LinkedProjectId;
+        var revision = SelectedRevision;
+        var endpoint = _apiClient.BaseUrl;
+        var session = _apiClient.SessionToken;
+        IsBusy = true;
+        try
+        {
+            StatusMessage = "Baixando e verificando a revisão CAD...";
+            var bytes = await _apiClient.DownloadNativeDocumentAsync(projectId, revision);
+            var drawing = CadDrawingSerializer.Deserialize(new UTF8Encoding(false, true).GetString(bytes));
+            if (LinkedProjectId != projectId || SelectedRevision?.Id != revision.Id || _apiClient.BaseUrl != endpoint || _apiClient.SessionToken != session)
+                throw new InvalidOperationException("A seleção ou sessão mudou durante o download. Tente novamente.");
+            if (_mainViewModel.InteractiveOperationActive?.Invoke() == true) throw new InvalidOperationException("Existe um comando interativo ativo. Desenho preservado.");
+            if (!_mainViewModel.ConfirmPendingChanges()) { StatusMessage = "Abertura cancelada. Desenho local preservado."; return false; }
+            drawing.Title = Path.GetFileName(revision.FileName);
+            // No local file is overwritten: Save prompts for a destination.
+            _mainViewModel.ReplaceDocument(drawing, null, true);
+            _revisionVersions[revision.FileName] = revision.VersionNumber;
+            IsDraftPendingConfirmation = false;
+            _mainViewModel.ZoomExtentsHandler?.Invoke();
+            StatusMessage = $"Revisão v{revision.VersionNumber} aberta e verificada. Salve uma cópia para manter o arquivo offline.";
+            return true;
+        }
+        catch (Exception ex) { StatusMessage = $"Não foi possível abrir a revisão: {ex.Message}"; return false; }
+        finally { IsBusy = false; }
+    }
+
     private Guid _draftProjectId, _draftRequirementId;
     private readonly Dictionary<string, int> _revisionVersions = new(StringComparer.OrdinalIgnoreCase);
     public ICommand LoadSelectedProjectCommand { get; }
@@ -208,6 +245,9 @@ public sealed class MutuaConectaViewModel : ObservableObject
         var details = await _apiClient.GetProjectDetailsAsync(selected.Id);
         if (details == null || SelectedProject?.Id != selected.Id) return;
         LinkedProjectId = details.Id; LinkedProjectCode = details.Code; LinkedProjectTitle = details.Title;
+        Revisions.Clear();
+        foreach (var document in details.Documents.Where(d => d.FileName.EndsWith(".cad", StringComparison.OrdinalIgnoreCase)).OrderByDescending(d => d.UploadedAtUtc).ThenByDescending(d => d.VersionNumber)) Revisions.Add(document);
+        SelectedRevision = Revisions.FirstOrDefault();
         _revisionVersions.Clear();
         foreach (var document in details.Documents) _revisionVersions[document.FileName] = Math.Max(_revisionVersions.GetValueOrDefault(document.FileName), document.VersionNumber);
         Requirements.Clear();
@@ -260,6 +300,7 @@ public sealed class MutuaConectaViewModel : ObservableObject
             _apiClient.SessionToken = savedToken;
         }
 
+        DownloadAndOpenRevisionCommand = new RelayCommand(async () => await DownloadAndOpenRevisionAsync());
         LoadSelectedProjectCommand = new RelayCommand(async () => { try { await LoadSelectedProjectAsync(); } catch (Exception ex) { StatusMessage = ex.Message; } });
         TogglePanelCommand = new RelayCommand(() => IsPanelVisible = !IsPanelVisible);
         ConnectAndLoginCommand = new RelayCommand(async () => await ConnectAndLoginAsync());

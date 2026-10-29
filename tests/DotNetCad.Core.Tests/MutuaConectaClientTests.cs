@@ -202,6 +202,38 @@ public sealed class MutuaConectaClientTests
         Assert.Equal(2, sync.VersionNumber);
     }
 
+    [Theory]
+    [InlineData(false, false, HttpStatusCode.OK)]
+    [InlineData(true, false, HttpStatusCode.OK)]
+    [InlineData(false, true, HttpStatusCode.OK)]
+    [InlineData(false, false, HttpStatusCode.NotFound)]
+    [InlineData(false, false, HttpStatusCode.Forbidden)]
+    public async Task NativeDownload_AuthenticatesAndChecksIntegrity(bool wrongHash, bool wrongSize, HttpStatusCode status)
+    {
+        var bytes = Encoding.UTF8.GetBytes("{\"Version\":1,\"Entities\":[]}");
+        var project = Guid.NewGuid(); var document = Guid.NewGuid();
+        using var handler = new NativeDownloadHandler(bytes, status, project, document);
+        using var http = new HttpClient(handler);
+        using var client = new MutuaConectaApiClient(http, "http://localhost:5180") { SessionToken = "test-session" };
+        var revision = new MutuaDocumentSummaryDto(document, null, Guid.NewGuid(), "Test", "Drawing", "drawing.cad", "CadNative", 2,
+            wrongHash ? "bad" : Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(bytes)), bytes.Length + (wrongSize ? 1 : 0), null, "ProjectTeam", DateTimeOffset.UtcNow);
+        if (wrongHash || wrongSize || status != HttpStatusCode.OK) await Assert.ThrowsAnyAsync<Exception>(() => client.DownloadNativeDocumentAsync(project, revision));
+        else Assert.Equal(bytes, await client.DownloadNativeDocumentAsync(project, revision));
+        client.SessionToken = null;
+        await Assert.ThrowsAsync<InvalidOperationException>(() => client.DownloadNativeDocumentAsync(project, revision));
+    }
+
+    private sealed class NativeDownloadHandler(byte[] bytes, HttpStatusCode status, Guid project, Guid document) : HttpMessageHandler
+    {
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            Assert.Equal("Bearer", request.Headers.Authorization?.Scheme);
+            Assert.Equal("test-session", request.Headers.Authorization?.Parameter);
+            Assert.Equal($"/api/v1/projects/{project}/documents/{document}/native", request.RequestUri!.AbsolutePath);
+            return Task.FromResult(new HttpResponseMessage(status) { Content = new ByteArrayContent(bytes) });
+        }
+    }
+
     private sealed class MockHttpMessageHandler : HttpMessageHandler
     {
         private readonly Dictionary<string, (HttpStatusCode status, string body)> _responses = new(StringComparer.OrdinalIgnoreCase);
