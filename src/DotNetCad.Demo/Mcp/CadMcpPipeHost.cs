@@ -357,10 +357,13 @@ public sealed class CadMcpPipeHost : IDisposable
                 bool hasDrenagem = doc.Layers.Any(l => l.Name.Equals("DRENAGEM", StringComparison.OrdinalIgnoreCase));
 
                 var gaps = new List<string>();
-                if (hasEletrica || hasSpda)
-                {
-                    gaps.Add("Disciplina ELETRICA/SPDA identificada nas camadas do CAD. O projeto PRJ-2026-001 possui requisito aberto para Engenheiro(a) Eletricista (Subestação 300 kVA e SPDA NBR 5419).");
-                }
+                var linked = _viewModel.Mutua.LinkedProjectId == Guid.Empty
+                    ? null : await _viewModel.Mutua.GetLinkedProjectDetailsAsync();
+                if (linked == null)
+                    gaps.Add("Sem dados confirmados do projeto vinculado. As disciplinas detectadas representam somente as camadas do desenho.");
+                else
+                    foreach (var requirement in linked.Requirements.Where(r => r.Status == "Open"))
+                        gaps.Add($"Projeto {linked.Code}: requisito aberto '{requirement.Title}' ({requirement.RequiredSpecialtyName}).");
 
                 var analysis = new
                 {
