@@ -324,37 +324,21 @@ public sealed class CadMcpPipeHost : IDisposable
                 return new CadMcpResponse(true, "SVG content follows.", SvgCadExporter.ExportToSvg(_viewModel.Document));
             case "export_dxf":
                 return new CadMcpResponse(true, "DXF content follows.", DxfCadExporter.ExportToDxf(_viewModel.Document));
+            case "mutua_sync_cad_document":
+            {
+                using var payload=JsonDocument.Parse(request.Command??"{}");var root=payload.RootElement;
+                if(!root.TryGetProperty("confirmPublish",out var confirmed) || confirmed.ValueKind!=JsonValueKind.True)
+                    return new(false,"Confirme explicitamente a publicação remota com confirmPublish=true.",Code:"CONFIRMATION_REQUIRED");
+                if(!root.TryGetProperty("projectId",out var project) || !project.TryGetGuid(out var id) || id!=_viewModel.Mutua.LinkedProjectId)
+                    return new(false,"O projeto informado deve ser o projeto vinculado ao desktop.",Code:"PROJECT_MISMATCH");
+                var result=await _viewModel.Mutua.SyncCadDocumentAsync();
+                return new(result.IsSuccess,result.Message??result.ErrorMessage??"Falha ao sincronizar.",JsonSerializer.Serialize(result),Code:result.IsSuccess?"OK":"SYNC_FAILED");
+            }
             case "mutua_get_linked_project":
             {
-                var projectInfo = new
-                {
-                    Code = _viewModel.Mutua.LinkedProjectCode,
-                    Title = _viewModel.Mutua.LinkedProjectTitle,
-                    ProjectId = _viewModel.Mutua.LinkedProjectId,
-                    Connection = _viewModel.Mutua.ConnectionStatusText,
-                    IsConnected = _viewModel.Mutua.IsConnected,
-                    IsAuthenticated = _viewModel.Mutua.IsAuthenticated,
-                    User = _viewModel.Mutua.AuthenticatedUserName,
-                    Disciplines = new[]
-                    {
-                        new { Code = "ENG-AGR", Name = "Agronomia / Fluxograma Operacional", CadLayer = "ESTRUTURA", Status = "Assigned", Lead = (string?)"Eng. Carlos Mendes" },
-                        new { Code = "ENG-CIV", Name = "Engenharia Civil / Fundações e Moega", CadLayer = "ESTRUTURA", Status = "Assigned", Lead = (string?)"Eng. Marcos Rocha" },
-                        new { Code = "ENG-ELE", Name = "Engenharia Elétrica / Subestação e SPDA", CadLayer = "ELETRICA", Status = "Open", Lead = (string?)null }
-                    },
-                    OpenRequirements = new[]
-                    {
-                        new
-                        {
-                            RequirementId = _viewModel.Mutua.ElectricalRequirementId,
-                            Title = "Projeto Executivo de Subestação 300 kVA e SPDA para Unidade de Beneficiamento",
-                            Specialty = "ENG-ELE",
-                            Competency = "SUBESTACAO-MT",
-                            MinProficiency = "Senior",
-                            EstimatedHonorarium = 14500.00
-                        }
-                    }
-                };
-                return new CadMcpResponse(true, $"Linked project: {_viewModel.Mutua.LinkedProjectCode}", JsonSerializer.Serialize(projectInfo));
+                var projectInfo=await _viewModel.Mutua.GetLinkedProjectDetailsAsync();
+                if(projectInfo==null)return new(false,"Não foi possível obter o projeto atual do servidor. Verifique conexão e autenticação no painel Mútua.",Code:"SERVER_UNAVAILABLE");
+                return new(true,$"Projeto atualizado: {projectInfo.Code}",JsonSerializer.Serialize(projectInfo));
             }
             case "mutua_inspect_cad_disciplines":
             {
@@ -390,7 +374,13 @@ public sealed class CadMcpPipeHost : IDisposable
             }
             case "mutua_find_specialists":
             {
-                var matches = await _viewModel.Mutua.FindSpecialistsAsync();
+                Guid? requirementId=null;
+                if(!string.IsNullOrWhiteSpace(request.Command))
+                {
+                    if(!Guid.TryParse(request.Command,out var parsed))return new(false,"RequirementId inválido.",Code:"INVALID_REQUEST");
+                    requirementId=parsed;
+                }
+                var matches = await _viewModel.Mutua.FindSpecialistsAsync(requirementId);
                 var content = JsonSerializer.Serialize(matches);
                 return new CadMcpResponse(true, $"{matches.Count} specialist(s) found.", content);
             }

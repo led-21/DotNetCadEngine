@@ -7,6 +7,15 @@ namespace DotNetCad.Mcp;
 [McpServerToolType]
 public sealed class MutuaConectaTools(CadMcpBridgeClient bridge)
 {
+    [McpServerTool, Description("Publish the current CAD snapshot and SVG to the linked Mútua server workspace. Requires an authenticated desktop session, matching projectId and explicit confirmPublish=true. This creates a remote revision; it is not automatic background sync.")]
+    public async Task<string> MutuaSyncCadDocument(string projectId,bool confirmPublish=false)
+    {
+        if(!Guid.TryParse(projectId,out var id) || id==Guid.Empty)throw new ArgumentException("Invalid projectId.");
+        var response=await bridge.SendAsync("mutua_sync_cad_document",JsonSerializer.Serialize(new {projectId=id,confirmPublish}));
+        if(!response.Success)throw new InvalidOperationException($"[{response.Code}] {response.Message}");
+        return response.Content??response.Message;
+    }
+
     [McpServerTool, Description("READ-ONLY: Returns details of the Mútua Conecta multidisciplinary project currently linked to the desktop CAD drawing, including disciplines, members, and open requirements.")]
     public async Task<string> MutuaGetLinkedProject()
     {

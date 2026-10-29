@@ -8,6 +8,9 @@ namespace DotNetCad.Mcp;
 [McpServerToolType]
 public sealed class CadTools(CadMcpBridgeClient bridge)
 {
+    [McpServerTool, Description("Read the capabilities of this installed MCP build without changing drawings or requiring the CAD app. Refresh/restart the MCP client to discover newly added tool schemas.")]
+    public string GetCapabilities() => System.Text.Json.JsonSerializer.Serialize(new {schemaVersion=2,serverVersion=typeof(CadTools).Assembly.GetName().Version?.ToString(),capabilities=DotNetCad.Infrastructure.MutuaConecta.CadIntegrationCapabilities.Supported});
+
     [McpServerTool, Description("Describe the drawing currently open in DotNetCad.Demo, including entity IDs, types, layers, staged AI proposals, and bounds.")]
     public async Task<string> DescribeDrawing() => await Content("describe");
 

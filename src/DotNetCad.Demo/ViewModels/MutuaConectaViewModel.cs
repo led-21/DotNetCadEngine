@@ -402,56 +402,15 @@ public sealed class MutuaConectaViewModel : ObservableObject
 
     public async Task<MutuaDocumentSyncResult> SyncCadDocumentAsync()
     {
+        if(IsBusy)return new(false,ErrorMessage:"Outra operação Mútua está em andamento.");
+        if(!IsAuthenticated)return new(false,ErrorMessage:"Autentique-se no painel Mútua antes de publicar o documento.");
+        if(_mainViewModel.InteractiveOperationActive?.Invoke()==true)return new(false,ErrorMessage:"Conclua ou cancele o comando interativo antes de sincronizar.");
         IsBusy = true;
         StatusMessage = "Sincronizando planta CAD e preview SVG com a plataforma web...";
         try
         {
-            var doc = _mainViewModel.Document;
-
-            // Generate SVG preview
-            var svgContent = SvgCadExporter.ExportToSvg(doc);
-
-            // Compute SHA-256
-            var rawBytes = Encoding.UTF8.GetBytes(svgContent);
-            var hashBytes = SHA256.HashData(rawBytes);
-            var sha256 = Convert.ToHexStringLower(hashBytes);
-
-            // Build metadata
-            var bbox = doc.BoundingBox;
-            var cadMetadata = new
-            {
-                engineVersion = "DotNetCadEngine 1.0 (.NET 10)",
-                activeLayer = doc.ActiveLayer,
-                entityCount = doc.Entities.Count,
-                layers = doc.Layers.Select(l => new
-                {
-                    name = l.Name,
-                    colorHex = l.ColorHex,
-                    isVisible = l.IsVisible,
-                    entityCount = doc.Entities.Count(e => e.Layer.Equals(l.Name, StringComparison.OrdinalIgnoreCase))
-                }),
-                boundingBox = new
-                {
-                    minX = bbox.MinX,
-                    minY = bbox.MinY,
-                    maxX = bbox.MaxX,
-                    maxY = bbox.MaxY
-                }
-            };
-            var cadMetadataJson = JsonSerializer.Serialize(cadMetadata);
-
-            var req = new MutuaCadDocumentSyncRequest(
-                ProjectDisciplineId: null,
-                Title: string.IsNullOrWhiteSpace(doc.Title) ? "Implantação Geral — Unidade de Silos" : doc.Title,
-                FileName: string.IsNullOrWhiteSpace(doc.Title) ? "UnidadeBeneficiamentoSilos.cad" : doc.Title,
-                Format: "CadNative",
-                Sha256Hash: sha256,
-                FileSizeBytes: rawBytes.Length,
-                CadMetadataJson: cadMetadataJson,
-                ContentPreviewSvg: svgContent,
-                Visibility: "ProjectTeam"
-            );
-
+            var req=MutuaCadSyncPayload.Create(_mainViewModel.Document);
+            var sha256=req.Sha256Hash;
             var result = await _apiClient.SyncCadDocumentMetadataAsync(LinkedProjectId, req);
             if (result.IsSuccess)
             {
@@ -478,14 +437,16 @@ public sealed class MutuaConectaViewModel : ObservableObject
         }
     }
 
-    public async Task<IReadOnlyList<MutuaProfessionalMatchDto>> FindSpecialistsAsync()
+    public Task<MutuaProjectDetailDto?> GetLinkedProjectDetailsAsync() => _apiClient.GetProjectDetailsAsync(LinkedProjectId);
+
+    public async Task<IReadOnlyList<MutuaProfessionalMatchDto>> FindSpecialistsAsync(Guid? requirementId=null)
     {
         IsBusy = true;
         StatusMessage = "Consultando ranking determinístico de especialistas na API...";
         RecommendedSpecialists.Clear();
         try
         {
-            var matches = await _apiClient.GetRecommendedSpecialistsAsync(LinkedProjectId, ElectricalRequirementId);
+            var matches = await _apiClient.GetRecommendedSpecialistsAsync(LinkedProjectId, requirementId??ElectricalRequirementId);
             foreach (var m in matches)
             {
                 RecommendedSpecialists.Add(m);
