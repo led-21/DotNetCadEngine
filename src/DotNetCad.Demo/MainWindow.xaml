@@ -389,10 +389,11 @@
                                             <!-- Section: Projeto Vinculado -->
                                             <Border Background="#0F172A" BorderBrush="#334155" BorderThickness="1" CornerRadius="4" Padding="6" Margin="0,0,0,6">
                                                 <StackPanel>
-                                                    <ComboBox ItemsSource="{Binding Mutua.Projects}" SelectedItem="{Binding Mutua.SelectedProject}" DisplayMemberPath="Title" />
-                                                    <Button Content="Carregar projeto selecionado" Command="{Binding Mutua.LoadSelectedProjectCommand}" />
-                                                    <TextBlock Text="Requisito" Foreground="#94A3B8" />
-                                                    <ComboBox ItemsSource="{Binding Mutua.Requirements}" SelectedItem="{Binding Mutua.SelectedRequirement}" DisplayMemberPath="Title" />
+                                                    <TextBlock Text="Projeto" Foreground="#94A3B8" FontSize="10" Margin="0,0,0,2" />
+                                                    <ComboBox ItemsSource="{Binding Mutua.Projects}" SelectedItem="{Binding Mutua.SelectedProject}" DisplayMemberPath="Title"
+                                                              FontSize="10" Margin="0,0,0,4" ToolTip="Selecione um projeto e carregue seus dados" />
+                                                    <Button Style="{StaticResource CadButtonStyle}" Content="Carregar projeto selecionado" Command="{Binding Mutua.LoadSelectedProjectCommand}"
+                                                            Margin="0,0,0,6" Padding="4,3" FontSize="10" ToolTip="Carregar os dados e requisitos do projeto selecionado" />
                                                     <TextBlock Text="PROJETO VINCULADO" Foreground="#38BDF8" FontSize="9" FontWeight="Bold" Margin="0,0,0,2" />
                                                     <TextBlock Text="{Binding Mutua.LinkedProjectCode}" Foreground="#F8FAFC" FontSize="11" FontWeight="Bold" />
                                                     <TextBlock Text="{Binding Mutua.LinkedProjectTitle}" Foreground="#CBD5E1" FontSize="10" TextWrapping="Wrap" Margin="0,2,0,4" />
@@ -413,6 +414,9 @@
                                                                 Command="{Binding Mutua.FindSpecialistsCommand}" Padding="5,1" FontSize="9" />
                                                         <TextBlock Text="ESPECIALISTAS" Foreground="#38BDF8" FontSize="9" FontWeight="Bold" VerticalAlignment="Center" />
                                                     </DockPanel>
+                                                    <TextBlock Text="Requisito do projeto" Foreground="#94A3B8" FontSize="10" Margin="0,0,0,2" />
+                                                    <ComboBox ItemsSource="{Binding Mutua.Requirements}" SelectedItem="{Binding Mutua.SelectedRequirement}" DisplayMemberPath="Title"
+                                                              FontSize="10" Margin="0,0,0,4" ToolTip="Selecione o requisito usado na busca de especialistas" />
                                                     <ItemsControl ItemsSource="{Binding Mutua.RecommendedSpecialists}">
                                                         <ItemsControl.ItemTemplate>
                                                             <DataTemplate>

@@ -284,7 +284,11 @@ public partial class MainWindow : Window
 
             Loaded += (_, _) => {
 
-                if(EnableLayoutPreferences){var p=CadLayoutPreferences.Load();_expandedConsoleHeight=p.ConsoleHeight;ConsoleView.IsHistoryExpanded=p.ConsoleExpanded;InspectorPanel.Width=p.InspectorWidth;InspectorExpander.IsExpanded=p.InspectorExpanded;viewModel.IsConsoleVisible=p.IsConsoleVisible;}
+                if(EnableLayoutPreferences){var p=CadLayoutPreferences.Load();_expandedConsoleHeight=p.ConsoleHeight;InspectorPanel.Width=p.InspectorWidth;InspectorExpander.IsExpanded=p.InspectorExpanded;}
+
+                // Start every session with the command console available, even if it was hidden on exit.
+                viewModel.IsConsoleVisible = true;
+                ConsoleView.IsHistoryExpanded = true;
 
                 _layoutReady=true;ConstrainConsole();UpdateConsoleVisibility(viewModel.IsConsoleVisible);ConsoleExpandedChanged(this,EventArgs.Empty);
 
