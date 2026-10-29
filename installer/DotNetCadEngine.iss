@@ -3,7 +3,7 @@
 ; =====================================================================
 
 #define MyAppName "DotNetCadEngine"
-#define MyAppVersion "1.0.1"
+#define MyAppVersion "1.0.2"
 #define MyAppPublisher "DotNetCadEngine Contributors"
 #define MyAppURL "https://github.com/led-21/DotNetCadEngine"
 #define MyAppExeName "DotNetCad.Demo.exe"
