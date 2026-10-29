@@ -1,4 +1,4 @@
-# DotNetCadEngine
+﻿# DotNetCadEngine
 
 [![CI](https://github.com/led-21/DotNetCadEngine/actions/workflows/ci.yml/badge.svg)](https://github.com/led-21/DotNetCadEngine/actions/workflows/ci.yml)
 
@@ -177,10 +177,13 @@ Interactive graphical tools with real-time preview and dedicated toolbar control
 
 ## CI
 
-O projeto é validado sob demanda via GitHub Actions (`workflow_dispatch`):
-- O build completo e os testes da solução (incluindo a interface WPF) são validados no Windows (`windows-latest`).
-- O `DotNetCad.Core` e o `DotNetCad.Infrastructure` são validados de forma desacoplada no Linux (`ubuntu-latest`).
+O projeto Ã© validado sob demanda via GitHub Actions (`workflow_dispatch`):
+- O build completo e os testes da soluÃ§Ã£o (incluindo a interface WPF) sÃ£o validados no Windows (`windows-latest`).
+- O `DotNetCad.Core` e o `DotNetCad.Infrastructure` sÃ£o validados de forma desacoplada no Linux (`ubuntu-latest`).
 
 ## License
 
-Licensed under the [MIT License](LICENSE).
+DotNetCadEngine é distribuído sob a licença **[PolyForm Noncommercial 1.0.0](LICENSE)**.
+
+- **Uso Não-Comercial & Portfólio:** O código é aberto para avaliação técnica, estudo de arquitetura, pesquisa e fins educacionais.
+- **Uso Comercial:** É vedada a exploração comercial, sublicenciamento ou distribuição em produtos comerciais fechados sem autorização formal do autor ([Adriano Godoy](https://github.com/led-21)).

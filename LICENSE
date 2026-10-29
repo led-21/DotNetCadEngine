@@ -1,21 +1,56 @@
-MIT License
+PolyForm Noncommercial License 1.0.0
 
-Copyright (c) 2026 DotNetCadEngine Contributors
+<https://polyformproject.org/licenses/noncommercial/1.0.0>
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+Copyright (c) 2026 Adriano Godoy. All rights reserved.
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+## Purpose
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+This license allows you to use the software for noncommercial purposes, free of charge.
+
+## Agreement
+
+In order to receive this license, you have to agree to its rules. Those rules are both obligations under that agreement and conditions to your license. Don't do anything with the software that triggers a rule you can't or won't follow.
+
+## Notices
+
+You must ensure that everyone who gets a copy of any part of this software from you also gets a copy of this license, as well as any copyright and other notices that came with the software.
+
+## Noncommercial Purposes
+
+Any noncommercial purpose is permitted. A noncommercial purpose is any purpose that is not primarily intended for or directed toward commercial advantage or monetary compensation.
+
+Examples of noncommercial purposes include:
+- Personal use, research, learning, evaluation, and technical portfolio demonstration
+- Educational, academic, and classroom use
+- Non-monetized hobbyist projects, technical reviews, and testing
+
+Examples of commercial purposes (strictly prohibited under this license without a commercial agreement) include:
+- Selling, sublicensing, or distributing the software or derivative works
+- Using the software to provide paid services, commercial products, or cloud SaaS offerings
+- Integrating the software into proprietary internal commercial production systems
+
+## Commercial Licensing
+
+For commercial licensing, enterprise deployment, or bespoke integration rights, contact the copyright holder:
+Adriano Godoy (https://github.com/led-21).
+
+## Fair Use
+
+You may do whatever is allowed under the copyright laws of the relevant jurisdiction without a license from the author, such as fair use.
+
+## No Other Rights
+
+These terms give you only the licenses expressly stated. The licensor retains all other rights in the software and intellectual property.
+
+## Defense In Depth
+
+As far as the law allows, the software comes as is, without any warranty or condition, and no contributor will be liable to anyone for any damages related to the software or this license, under any kind of legal claim.
+
+================================================================================
+RESUMO EM PORTUGUÊS (FINALIDADE E DIRETRIZES DE USO)
+================================================================================
+Esta engine de CAD 2D é disponibilizada sob a licença PolyForm Noncommercial 1.0.0:
+1. Uso Não-Comercial Permitido: Gratuito para fins educacionais, acadêmicos, pesquisa técnica, estudo de arquitetura de software, avaliação e demonstração em portfólio.
+2. Uso Comercial Restrito: É expressamente vedada a incorporação em produtos pagos, distribuição comercial, sublicenciamento ou oferta como serviço comercial em nuvem sem prévia autorização formal do autor.
+3. Para Licenciamento Comercial: Entre em contato diretamente com o autor (Adriano Godoy / https://github.com/led-21).
