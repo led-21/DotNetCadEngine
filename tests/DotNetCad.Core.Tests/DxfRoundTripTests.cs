@@ -179,8 +179,10 @@ public class DxfRoundTripTests
         Assert.Equal(5.0, poly.Vertices[2].Y);
     }
 
-    [Fact]
-    public void Dxf_Import_HeaderInsUnits_SetsDisplayUnit()
+    [Theory]
+    [InlineData("\n")]
+    [InlineData("\r\n")]
+    public void Dxf_Import_HeaderInsUnits_SetsDisplayUnit(string lineEnding)
     {
         // 4 = Millimeters
         var dxfMm = """
@@ -216,16 +218,18 @@ public class DxfRoundTripTests
         EOF
         """;
 
+        // Exercise both DXF line endings regardless of the checkout platform.
+        dxfMm = dxfMm.ReplaceLineEndings(lineEnding);
         var reportMm = DxfCadImporter.ImportFromDxfWithReport(dxfMm);
         Assert.Equal("mm", reportMm.Document.Preferences.DisplayUnit);
 
         // 5 = Centimeters
-        var dxfCm = dxfMm.Replace("70\r\n4", "70\r\n5").Replace("70\n4", "70\n5");
+        var dxfCm = dxfMm.Replace($"70{lineEnding}4", $"70{lineEnding}5");
         var reportCm = DxfCadImporter.ImportFromDxfWithReport(dxfCm);
         Assert.Equal("cm", reportCm.Document.Preferences.DisplayUnit);
 
         // 6 = Meters
-        var dxfM = dxfMm.Replace("70\r\n4", "70\r\n6").Replace("70\n4", "70\n6");
+        var dxfM = dxfMm.Replace($"70{lineEnding}4", $"70{lineEnding}6");
         var reportM = DxfCadImporter.ImportFromDxfWithReport(dxfM);
         Assert.Equal("m", reportM.Document.Preferences.DisplayUnit);
     }
