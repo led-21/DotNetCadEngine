@@ -387,15 +387,18 @@ public sealed class CadMcpPipeHost : IDisposable
             case "mutua_prepare_collaboration_draft":
             {
                 Guid recipientId = Guid.Empty;
-                string recipientName = "Eng. Helena Vasconcelos";
-                string message = "Olá Eng. Helena, identificamos seu portfólio em subestações agroindustriais e gostaríamos de convidá-la para a disciplina elétrica e SPDA do projeto PRJ-2026-001.";
+                string recipientName = string.Empty;
+                string message = string.Empty;
                 decimal honorarium = 14500.00m;
 
                 if (!string.IsNullOrWhiteSpace(request.Command))
                 {
                     try
                     {
-                        var jsonDoc = JsonDocument.Parse(request.Command);
+                        using var jsonDoc = JsonDocument.Parse(request.Command);
+                        foreach (var context in new[] { ("projectId", _viewModel.Mutua.LinkedProjectId), ("requirementId", _viewModel.Mutua.SelectedRequirement?.Id ?? Guid.Empty) })
+                            if (jsonDoc.RootElement.TryGetProperty(context.Item1, out var value) && value.ValueKind != JsonValueKind.Null && (!value.TryGetGuid(out var selected) || selected != context.Item2))
+                                return new(false, "Contexto do convite difere da seleção no painel.", Code: "CONTEXT_MISMATCH");
                         if (jsonDoc.RootElement.TryGetProperty("recipientProfileId", out var rId) && rId.TryGetGuid(out var gid))
                             recipientId = gid;
                         if (jsonDoc.RootElement.TryGetProperty("recipientName", out var rName) && !string.IsNullOrWhiteSpace(rName.GetString()))
@@ -410,9 +413,12 @@ public sealed class CadMcpPipeHost : IDisposable
 
                 if (recipientId == Guid.Empty)
                 {
-                    recipientId = Guid.Parse("22222222-2222-2222-2222-222222222202");
+                    return new CadMcpResponse(false, "Informe recipientProfileId obtido das recomendações do requisito selecionado.", Code: "INVALID_REQUEST");
                 }
 
+                var candidate = _viewModel.Mutua.RecommendedSpecialists.FirstOrDefault(m => m.ProfileId == recipientId);
+                if (candidate == null || string.IsNullOrWhiteSpace(message)) return new(false, "Consulte as recomendações e informe uma mensagem para o convite.", Code: "INVALID_REQUEST");
+                recipientName = candidate.DisplayName;
                 _viewModel.Mutua.StageCollaborationDraft(recipientId, recipientName, message, honorarium);
 
                 return new CadMcpResponse(true,

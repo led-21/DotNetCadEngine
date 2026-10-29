@@ -21,8 +21,8 @@ public sealed class MutuaConectaViewModel : ObservableObject
 
     private bool _isPanelVisible = true;
     private string _apiUrl = MutuaEndpointValidator.DefaultProductionUrl;
-    private string _demoEmail = "carlos.mendes@demo.mutuaconecta.local";
-    private string _demoPassword = "Demo@Mutua2026!";
+    private string _demoEmail = string.Empty;
+    private string _demoPassword = string.Empty;
     private string _connectionStatusText = "Modo Offline (API desconectada)";
     private bool _isConnected;
     private bool _isAuthenticated;
@@ -32,10 +32,10 @@ public sealed class MutuaConectaViewModel : ObservableObject
     private bool _isBusy;
 
     // Linked Project PRJ-2026-001 info
-    private Guid _linkedProjectId = Guid.Parse("40000000-0000-0000-0000-000000000001");
-    private string _linkedProjectCode = "PRJ-2026-001";
-    private string _linkedProjectTitle = "Unidade Agroindustrial de Beneficiamento e Armazenagem de Grãos — Bonito/MS";
-    private Guid _electricalRequirementId = Guid.Parse("55555555-5555-5555-5555-555555555501");
+    private Guid _linkedProjectId;
+    private string _linkedProjectCode = string.Empty;
+    private string _linkedProjectTitle = "Selecione um projeto";
+    private Guid _electricalRequirementId;
 
     // Collaboration draft staged for human confirmation
     private bool _isDraftPendingConfirmation;
@@ -184,6 +184,37 @@ public sealed class MutuaConectaViewModel : ObservableObject
         set => SetProperty(ref _draftHonorarium, value);
     }
 
+    public ObservableCollection<MutuaProjectSummaryDto> Projects { get; } = [];
+    public ObservableCollection<MutuaProjectRequirementDto> Requirements { get; } = [];
+    private MutuaProjectSummaryDto? _selectedProject;
+    public MutuaProjectSummaryDto? SelectedProject
+    {
+        get => _selectedProject;
+        set { if (SetProperty(ref _selectedProject, value)) { LinkedProjectId = Guid.Empty; LinkedProjectCode = string.Empty; LinkedProjectTitle = "Selecione um projeto"; Requirements.Clear(); SelectedRequirement = null; RecommendedSpecialists.Clear(); IsDraftPendingConfirmation = false; } }
+    }
+    private MutuaProjectRequirementDto? _selectedRequirement;
+    public MutuaProjectRequirementDto? SelectedRequirement
+    {
+        get => _selectedRequirement;
+        set { if (SetProperty(ref _selectedRequirement, value)) { ElectricalRequirementId = value?.Id ?? Guid.Empty; RecommendedSpecialists.Clear(); IsDraftPendingConfirmation = false; } }
+    }
+    private Guid _draftProjectId, _draftRequirementId;
+    private readonly Dictionary<string, int> _revisionVersions = new(StringComparer.OrdinalIgnoreCase);
+    public ICommand LoadSelectedProjectCommand { get; }
+    public async Task LoadSelectedProjectAsync()
+    {
+        var selected = SelectedProject;
+        if (!IsAuthenticated || selected == null) return;
+        var details = await _apiClient.GetProjectDetailsAsync(selected.Id);
+        if (details == null || SelectedProject?.Id != selected.Id) return;
+        LinkedProjectId = details.Id; LinkedProjectCode = details.Code; LinkedProjectTitle = details.Title;
+        _revisionVersions.Clear();
+        foreach (var document in details.Documents) _revisionVersions[document.FileName] = Math.Max(_revisionVersions.GetValueOrDefault(document.FileName), document.VersionNumber);
+        Requirements.Clear();
+        foreach (var requirement in details.Requirements) Requirements.Add(requirement);
+        SelectedRequirement = Requirements.FirstOrDefault();
+    }
+
     public ObservableCollection<MutuaProfessionalMatchDto> RecommendedSpecialists { get; } = [];
 
     public ICommand TogglePanelCommand { get; }
@@ -229,6 +260,7 @@ public sealed class MutuaConectaViewModel : ObservableObject
             _apiClient.SessionToken = savedToken;
         }
 
+        LoadSelectedProjectCommand = new RelayCommand(async () => { try { await LoadSelectedProjectAsync(); } catch (Exception ex) { StatusMessage = ex.Message; } });
         TogglePanelCommand = new RelayCommand(() => IsPanelVisible = !IsPanelVisible);
         ConnectAndLoginCommand = new RelayCommand(async () => await ConnectAndLoginAsync());
         CheckHealthCommand = new RelayCommand(async () => await CheckHealthAsync());
@@ -240,8 +272,8 @@ public sealed class MutuaConectaViewModel : ObservableObject
             if (p is MutuaProfessionalMatchDto match)
             {
                 StageCollaborationDraft(match.ProfileId, match.DisplayName,
-                    $"Olá {match.DisplayName}, identificamos seu portfólio em subestações agroindustriais e gostaríamos de convidá-la para a disciplina elétrica e SPDA do projeto {LinkedProjectCode}.",
-                    14500.00m);
+                    $"Olá {match.DisplayName}, convidamos você para {SelectedRequirement?.Title} no projeto {LinkedProjectCode}.",
+                    SelectedRequirement?.EstimatedHonorariumBrl ?? 0m);
             }
         });
         ConfirmSendInviteCommand = new RelayCommand(async () => await ConfirmSendInviteAsync());
@@ -275,7 +307,9 @@ public sealed class MutuaConectaViewModel : ObservableObject
     public async Task<bool> ConnectAndLoginAsync()
     {
         IsBusy = true;
-        StatusMessage = "Autenticando persona demonstrativa...";
+        StatusMessage = "Autenticando...";
+        IsAuthenticated = false; IsDraftPendingConfirmation = false; RecommendedSpecialists.Clear(); Projects.Clear(); Requirements.Clear(); SelectedProject = null; LinkedProjectId = Guid.Empty;
+        _apiClient.SessionToken = null;
         try
         {
             var health = await _apiClient.CheckHealthAsync();
@@ -308,6 +342,8 @@ public sealed class MutuaConectaViewModel : ObservableObject
                     LastUserEmail = DemoEmail
                 });
 
+                foreach (var project in await _apiClient.GetMyProjectsAsync()) Projects.Add(project);
+                DemoPassword = string.Empty;
                 _mainViewModel.AppendConsole($"MUTUA: Autenticado com sucesso como {AuthenticatedUserName}.");
                 return true;
             }
@@ -406,6 +442,7 @@ public sealed class MutuaConectaViewModel : ObservableObject
     }
     public async Task<MutuaDocumentSyncResult> SyncCadDocumentAsync()
     {
+        if(LinkedProjectId == Guid.Empty)return RejectSync("Selecione e carregue um projeto antes de publicar.");
         if(IsBusy)return RejectSync("Outra operação Mútua está em andamento.");
         if(!IsAuthenticated)return RejectSync("Autentique-se no painel Mútua antes de publicar o documento.");
         if(_mainViewModel.InteractiveOperationActive?.Invoke()==true)return RejectSync("Conclua ou cancele o comando interativo antes de sincronizar.");
@@ -414,10 +451,12 @@ public sealed class MutuaConectaViewModel : ObservableObject
         try
         {
             var req=MutuaCadSyncPayload.Create(_mainViewModel.Document);
+            req = req with { ExpectedVersion = _revisionVersions.GetValueOrDefault(req.FileName) };
             var sha256=req.Sha256Hash;
             var result = await _apiClient.SyncCadDocumentMetadataAsync(LinkedProjectId, req);
             if (result.IsSuccess)
             {
+                _revisionVersions[req.FileName] = result.VersionNumber ?? req.ExpectedVersion!.Value + 1;
                 StatusMessage = $"Documento sincronizado com sucesso (v{result.VersionNumber ?? 1})!";
                 _mainViewModel.AppendConsole($"MUTUA OK: Planta CAD sincronizada no projeto {LinkedProjectCode}. SHA-256: {sha256[..8]}...");
             }
@@ -445,12 +484,16 @@ public sealed class MutuaConectaViewModel : ObservableObject
 
     public async Task<IReadOnlyList<MutuaProfessionalMatchDto>> FindSpecialistsAsync(Guid? requirementId=null)
     {
+        if (LinkedProjectId == Guid.Empty || SelectedRequirement == null) { StatusMessage = "Selecione projeto e requisito."; return []; }
+        if (requirementId.HasValue && requirementId != SelectedRequirement.Id) { StatusMessage = "O requisito deve ser selecionado no painel."; return []; }
+        var projectId = LinkedProjectId; var selectedId = SelectedRequirement.Id;
         IsBusy = true;
         StatusMessage = "Consultando ranking determinístico de especialistas na API...";
         RecommendedSpecialists.Clear();
         try
         {
-            var matches = await _apiClient.GetRecommendedSpecialistsAsync(LinkedProjectId, requirementId??ElectricalRequirementId);
+            var matches = await _apiClient.GetRecommendedSpecialistsAsync(projectId, selectedId);
+            if (LinkedProjectId != projectId || SelectedRequirement?.Id != selectedId) return [];
             foreach (var m in matches)
             {
                 RecommendedSpecialists.Add(m);
@@ -483,6 +526,9 @@ public sealed class MutuaConectaViewModel : ObservableObject
 
     public void StageCollaborationDraft(Guid recipientProfileId, string recipientName, string message, decimal honorarium)
     {
+        if (LinkedProjectId == Guid.Empty || SelectedRequirement == null || !RecommendedSpecialists.Any(m => m.ProfileId == recipientProfileId))
+            throw new InvalidOperationException("Selecione projeto, requisito e profissional recomendado antes de preparar o convite.");
+        _draftProjectId = LinkedProjectId; _draftRequirementId = SelectedRequirement.Id;
         DraftRecipientProfileId = recipientProfileId;
         DraftRecipientName = recipientName;
         DraftMessage = message;
@@ -495,7 +541,7 @@ public sealed class MutuaConectaViewModel : ObservableObject
 
     public async Task<bool> ConfirmSendInviteAsync()
     {
-        if (!DraftRecipientProfileId.HasValue)
+        if (IsBusy || !IsAuthenticated || !IsDraftPendingConfirmation || LinkedProjectId != _draftProjectId || SelectedRequirement?.Id != _draftRequirementId || !DraftRecipientProfileId.HasValue)
         {
             StatusMessage = "Nenhum profissional selecionado para o convite.";
             return false;
@@ -506,13 +552,13 @@ public sealed class MutuaConectaViewModel : ObservableObject
         try
         {
             var req = new MutuaCreateInvitationRequest(
-                ProjectRequirementId: ElectricalRequirementId,
+                ProjectRequirementId: _draftRequirementId,
                 RecipientProfileId: DraftRecipientProfileId.Value,
                 Message: DraftMessage,
                 ProposedHonorariumBrl: DraftHonorarium
             );
 
-            var invite = await _apiClient.SendCollaborationInvitationAsync(LinkedProjectId, req);
+            var invite = await _apiClient.SendCollaborationInvitationAsync(_draftProjectId, req);
             if (invite != null)
             {
                 StatusMessage = $"Convite enviado com sucesso para {DraftRecipientName}!";

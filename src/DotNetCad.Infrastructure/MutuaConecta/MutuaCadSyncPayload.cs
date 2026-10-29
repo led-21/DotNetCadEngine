@@ -25,7 +25,7 @@ public static class MutuaCadSyncPayload
             capabilities=CadIntegrationCapabilities.Supported
         });
         var title=string.IsNullOrWhiteSpace(document.Title)?"Drawing.cad":document.Title;
-        return new(null,title,Path.GetFileName(title),"CadNative",Convert.ToHexStringLower(SHA256.HashData(bytes)),bytes.LongLength,metadata,SvgCadExporter.ExportToSvg(document),"ProjectTeam");
+        return new(null,title,Path.GetFileName(title),"CadNative",Convert.ToHexStringLower(SHA256.HashData(bytes)),bytes.LongLength,metadata,SvgCadExporter.ExportToSvg(document),"ProjectTeam",bytes,0);
     }
 }
 public static class CadIntegrationCapabilities

@@ -40,13 +40,13 @@ public sealed class MutuaConectaDemoTests
             var viewModel = new MainViewModel();
 
             Assert.NotNull(viewModel.Mutua);
-            Assert.Equal("PRJ-2026-001", viewModel.Mutua.LinkedProjectCode);
+            Assert.Empty(viewModel.Mutua.DemoPassword);
             Assert.True(viewModel.Mutua.IsPanelVisible);
 
             // Test MUTUA STATUS command
             var statusResult = viewModel.RunCadCommand("MUTUA STATUS");
             Assert.True(statusResult.Success);
-            Assert.Contains("PRJ-2026-001", statusResult.Message);
+            Assert.False(string.IsNullOrWhiteSpace(statusResult.Message));
 
             // Test MUTUA SILOS command (loads the 4 multidisciplinary layers)
             var silosResult = viewModel.RunCadCommand("MUTUA SILOS");
@@ -88,6 +88,10 @@ public sealed class MutuaConectaDemoTests
             Assert.False(mutua.IsDraftPendingConfirmation);
 
             var helenaId = Guid.Parse("22222222-2222-2222-2222-222222222202");
+            Assert.Throws<InvalidOperationException>(() => mutua.StageCollaborationDraft(helenaId, "Helena", "Teste", 0));
+            mutua.LinkedProjectId = Guid.NewGuid();
+            mutua.SelectedRequirement = System.Text.Json.JsonSerializer.Deserialize<DotNetCad.Infrastructure.MutuaConecta.MutuaProjectRequirementDto>("{\"Id\":\"" + Guid.NewGuid() + "\",\"Title\":\"Requisito selecionado\"}")!;
+            mutua.RecommendedSpecialists.Add(new(helenaId, "Eng. Helena Vasconcelos", "Elétrica", "ELE", "Elétrica", "Campo Grande", "MS", 100, [], false, false));
             mutua.StageCollaborationDraft(
                 helenaId,
                 "Eng. Helena Vasconcelos",
@@ -99,6 +103,9 @@ public sealed class MutuaConectaDemoTests
             Assert.Equal(helenaId, mutua.DraftRecipientProfileId);
             Assert.Equal(14500.00m, mutua.DraftHonorarium);
             Assert.Contains("subestação", mutua.DraftMessage);
+
+            mutua.SelectedRequirement = null;
+            Assert.False(mutua.IsDraftPendingConfirmation);
 
             // User cancels the draft
             mutua.CancelDraftCommand.Execute(null);

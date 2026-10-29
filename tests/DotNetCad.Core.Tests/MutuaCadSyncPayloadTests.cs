@@ -13,6 +13,11 @@ public class MutuaCadSyncPayloadTests
         using var meta=JsonDocument.Parse(payload.CadMetadataJson!);
         Assert.Equal(0,meta.RootElement.GetProperty("entityCount").GetInt32());
         Assert.Equal(JsonValueKind.Null,meta.RootElement.GetProperty("boundingBox").ValueKind);
+        Assert.NotNull(payload.NativeContent);
+        Assert.Equal(payload.Sha256Hash, Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(payload.NativeContent)));
+        Assert.Equal(payload.FileSizeBytes, payload.NativeContent.LongLength);
+        using var native = JsonDocument.Parse(payload.NativeContent);
+        Assert.Equal(1, native.RootElement.GetProperty("Version").GetInt32());
         Assert.Equal(64,payload.Sha256Hash.Length);Assert.True(payload.FileSizeBytes>0);
         Assert.Contains("<svg",payload.ContentPreviewSvg!);
         Assert.Contains("mutua_sync_explicit",meta.RootElement.GetProperty("capabilities").EnumerateArray().Select(x=>x.GetString()));

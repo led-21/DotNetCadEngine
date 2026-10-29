@@ -163,7 +163,9 @@ public sealed record MutuaCadDocumentSyncRequest(
     long FileSizeBytes,
     string? CadMetadataJson,
     string? ContentPreviewSvg,
-    string Visibility = "ProjectTeam"
+    string Visibility = "ProjectTeam",
+    byte[]? NativeContent = null,
+    int? ExpectedVersion = null
 );
 
 public sealed record MutuaDocumentSyncResult(

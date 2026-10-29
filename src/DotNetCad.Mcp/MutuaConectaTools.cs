@@ -44,14 +44,16 @@ public sealed class MutuaConectaTools(CadMcpBridgeClient bridge)
         [Description("Recipient specialist display name (e.g. 'Eng. Helena Vasconcelos')")] string recipientName,
         [Description("Invitation message explaining the technical requirement and project context")] string message,
         [Description("Proposed honorarium in BRL (e.g. 14500.00)")] double proposedHonorariumBrl,
-        [Description("Optional specialist profile GUID string")] string? recipientProfileId = null)
+        [Description("Optional specialist profile GUID string")] string? recipientProfileId = null,
+        string? projectId = null,
+        string? requirementId = null)
     {
         var payload = JsonSerializer.Serialize(new
         {
             recipientName,
             message,
             proposedHonorariumBrl = (decimal)proposedHonorariumBrl,
-            recipientProfileId
+            recipientProfileId, projectId, requirementId
         });
         var response = await bridge.SendAsync("mutua_prepare_collaboration_draft", payload);
         if(!response.Success)throw new InvalidOperationException($"[{response.Code}] {response.Message}");

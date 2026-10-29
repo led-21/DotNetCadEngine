@@ -134,7 +134,7 @@
                 <MenuItem Header="_Sincronizar CAD/SVG com Mútua Conecta" Command="{Binding Mutua.SyncCadDocumentCommand}" />
                 <MenuItem Header="_Buscar Especialistas Compatíveis" Command="{Binding Mutua.FindSpecialistsCommand}" />
                 <Separator />
-                <MenuItem Header="_Login Demo (Eng. Carlos Mendes)" Command="{Binding Mutua.ConnectAndLoginCommand}" />
+                <MenuItem Header="_Entrar na Mútua" Command="{Binding Mutua.ConnectAndLoginCommand}" />
                 <MenuItem Header="Testar _Saúde da API" Command="{Binding Mutua.CheckHealthCommand}" />
             </MenuItem>
 
@@ -372,9 +372,13 @@
                                                     <TextBlock Text="URL da API:" Foreground="#94A3B8" FontSize="10" Margin="0,0,0,2" />
                                                     <TextBox Text="{Binding Mutua.ApiUrl, UpdateSourceTrigger=PropertyChanged}" Background="#172033" Foreground="#F8FAFC"
                                                              BorderBrush="#475569" BorderThickness="1" Padding="4,2" FontFamily="Consolas" FontSize="10" Margin="0,0,0,4" />
+                                                    <TextBlock Text="E-mail" Foreground="#94A3B8" />
+                                                    <TextBox Text="{Binding Mutua.DemoEmail, UpdateSourceTrigger=PropertyChanged}" />
+                                                    <TextBlock Text="Senha" Foreground="#94A3B8" />
+                                                    <PasswordBox PasswordChanged="MutuaPasswordChanged" />
                                                     <UniformGrid Columns="2" Margin="0,0,0,4">
-                                                        <Button Style="{StaticResource CadButtonStyle}" Content="Login Demo" Command="{Binding Mutua.ConnectAndLoginCommand}"
-                                                                ToolTip="Autenticar como Eng. Carlos Mendes (Demo)" Margin="0,0,2,0" Padding="4,2" FontSize="10" />
+                                                        <Button Style="{StaticResource CadButtonStyle}" Content="Entrar" Command="{Binding Mutua.ConnectAndLoginCommand}"
+                                                                ToolTip="Autenticar com suas credenciais" Margin="0,0,2,0" Padding="4,2" FontSize="10" />
                                                         <Button Style="{StaticResource CadButtonStyle}" Content="Saúde API" Command="{Binding Mutua.CheckHealthCommand}"
                                                                 ToolTip="Consultar probe de saúde da API" Margin="2,0,0,0" Padding="4,2" FontSize="10" />
                                                     </UniformGrid>
@@ -385,6 +389,10 @@
                                             <!-- Section: Projeto Vinculado -->
                                             <Border Background="#0F172A" BorderBrush="#334155" BorderThickness="1" CornerRadius="4" Padding="6" Margin="0,0,0,6">
                                                 <StackPanel>
+                                                    <ComboBox ItemsSource="{Binding Mutua.Projects}" SelectedItem="{Binding Mutua.SelectedProject}" DisplayMemberPath="Title" />
+                                                    <Button Content="Carregar projeto selecionado" Command="{Binding Mutua.LoadSelectedProjectCommand}" />
+                                                    <TextBlock Text="Requisito" Foreground="#94A3B8" />
+                                                    <ComboBox ItemsSource="{Binding Mutua.Requirements}" SelectedItem="{Binding Mutua.SelectedRequirement}" DisplayMemberPath="Title" />
                                                     <TextBlock Text="PROJETO VINCULADO" Foreground="#38BDF8" FontSize="9" FontWeight="Bold" Margin="0,0,0,2" />
                                                     <TextBlock Text="{Binding Mutua.LinkedProjectCode}" Foreground="#F8FAFC" FontSize="11" FontWeight="Bold" />
                                                     <TextBlock Text="{Binding Mutua.LinkedProjectTitle}" Foreground="#CBD5E1" FontSize="10" TextWrapping="Wrap" Margin="0,2,0,4" />
