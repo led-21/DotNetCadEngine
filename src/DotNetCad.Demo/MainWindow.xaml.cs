@@ -268,6 +268,16 @@ public partial class MainWindow : Window
 
             viewModel.PropertyChanged += (_, e) => {
 
+                if (e.PropertyName == nameof(MainViewModel.ActiveTool) && viewModel.ActiveTool == DotNetCad.Core.Editor.CadToolType.Text)
+                    Dispatcher.BeginInvoke(() => {
+                        if (!IsVisible || viewModel.ActiveTool != DotNetCad.Core.Editor.CadToolType.Text) return;
+                        var dialog = new Views.TextEntryDialog { Owner = this };
+                        if (dialog.ShowDialog() == true)
+                            Viewport.BeginTextInsertion(dialog.AnnotationText, dialog.AnnotationHeight);
+                        else Viewport.CancelOperation();
+                        Viewport.Focus();
+                    });
+
                 if (e.PropertyName == nameof(MainViewModel.ActiveTool) && !ConsoleView.IsKeyboardFocusWithin) Dispatcher.BeginInvoke(() => Viewport.Focus());
 
                 if (e.PropertyName == nameof(MainViewModel.IsConsoleVisible)) UpdateConsoleVisibility(viewModel.IsConsoleVisible);

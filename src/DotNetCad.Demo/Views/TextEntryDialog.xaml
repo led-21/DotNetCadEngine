@@ -1,0 +1,36 @@
+<Window x:Class="DotNetCad.Demo.Views.TextEntryDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Inserir texto" Width="480" SizeToContent="Height" ResizeMode="NoResize"
+        WindowStartupLocation="CenterOwner" ShowInTaskbar="False" Background="#0F172A" Foreground="#F8FAFC">
+    <Window.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="/DotNetCad.Demo;component/Themes/DarkCadTheme.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+            <Style TargetType="TextBox">
+                <Setter Property="Background" Value="#09101E" />
+                <Setter Property="Foreground" Value="#F8FAFC" />
+                <Setter Property="BorderBrush" Value="#334155" />
+                <Setter Property="CaretBrush" Value="#38BDF8" />
+                <Setter Property="Padding" Value="10,8" />
+                <Setter Property="FontSize" Value="14" />
+            </Style>
+        </ResourceDictionary>
+    </Window.Resources>
+    <StackPanel Margin="24">
+        <TextBlock Text="Inserir texto" FontSize="20" FontWeight="SemiBold" />
+        <TextBlock Text="Digite a anotação. Depois, clique no desenho para posicioná-la."
+                   TextWrapping="Wrap" Foreground="#94A3B8" Margin="0,8,0,18" />
+        <Label Content="Texto" Target="{Binding ElementName=ContentInput}" Foreground="#CBD5E1" />
+        <TextBox x:Name="ContentInput" MaxLength="500" AutomationProperties.Name="Texto da anotação" />
+        <Label Content="Altura no desenho (metros)" Target="{Binding ElementName=HeightInput}"
+               Foreground="#CBD5E1" Margin="0,10,0,0" />
+        <TextBox x:Name="HeightInput" Text="0,25" AutomationProperties.Name="Altura do texto em metros" />
+        <TextBlock x:Name="ValidationMessage" Foreground="#FCA5A5" TextWrapping="Wrap" Margin="0,12,0,0" />
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,18,0,0">
+            <Button Content="Cancelar" IsCancel="True" Style="{StaticResource CadButtonStyle}" Margin="0,0,10,0" />
+            <Button Content="Posicionar no desenho" IsDefault="True" Click="ConfirmClick" Style="{StaticResource CadButtonStyle}" />
+        </StackPanel>
+    </StackPanel>
+</Window>

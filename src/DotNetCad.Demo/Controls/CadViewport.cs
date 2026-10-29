@@ -1454,6 +1454,20 @@ public sealed class CadViewport : FrameworkElement
         }
         InvalidateVisual();
     }
+    public void BeginTextInsertion(string text, double height)
+    {
+        if (string.IsNullOrWhiteSpace(text) || text.Length > 500 || text.Any(char.IsControl) ||
+            !double.IsFinite(height) || height < .05) throw new ArgumentException("Texto ou altura inválidos.");
+        ActiveTool = CadToolType.Text;
+        _textContent = text;
+        _textHeight = height;
+        _parameterText = "";
+        _textStep = 2;
+        UpdateTextPreview(_currentSnap.Point);
+        UpdateCommandStatus();
+        InvalidateVisual();
+    }
+
     private void CommitText()
     {
         if(Document==null || UndoManager==null || _textPreview==null || Document.GetLayer(_textPreview.Layer) is not {IsVisible:true,IsLocked:false})return;
@@ -1519,6 +1533,8 @@ public sealed class CadViewport : FrameworkElement
 
         if (ActiveTool == CadToolType.Text)
         {
+            // Printable keys must reach WPF TextInput; handling them here suppresses typing.
+            if (e.Key is not (Key.Escape or Key.Back or Key.Enter)) return;
             if (e.Key == Key.Escape) { ActiveTool = CadToolType.Select; _textPreview=null; _parameterText=""; }
             else if (e.Key == Key.Back && _parameterText.Length > 0) _parameterText = _parameterText[..^1];
             else if (e.Key == Key.Enter)
